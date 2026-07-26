@@ -17,51 +17,72 @@ CORS(app)
 # ==============================
 base_dir = os.path.dirname(__file__)
 
+print("FILE YANG DIJALANKAN:", __file__)
 try:
 
     model = joblib.load(
         os.path.join(
             base_dir,
-            'model_final.joblib'
+            "model_final.joblib"
         )
     )
 
     le = joblib.load(
         os.path.join(
             base_dir,
-            'encoder_barang.joblib'
+            "encoder_barang.joblib"
         )
     )
 
     metrics = joblib.load(
         os.path.join(
             base_dir,
-            'metrics.pkl'
+            "metrics.pkl"
         )
     )
 
     mean_barang_dict = joblib.load(
         os.path.join(
             base_dir,
-            'mean_barang.pkl'
+            "mean_barang.pkl"
         )
     )
 
     freq_barang_dict = joblib.load(
         os.path.join(
             base_dir,
-            'freq_barang.pkl'
+            "freq_barang.pkl"
         )
     )
 
-    print("✅ Semua model berhasil dimuat")
+    fitur_model = joblib.load(
+        os.path.join(
+            base_dir,
+            "fitur_model.pkl"
+        )
+    )
+
+    print("✅ Semua file berhasil dimuat")
+
+    print("\n" + "=" * 50)
+    print("INFORMASI MODEL")
+    print("=" * 50)
+
+    print(f"Jumlah fitur model : {model.n_features_in_}")
+    print(f"Jumlah fitur file  : {len(fitur_model)}")
+
+    print("\nDaftar fitur model:")
+
+    for i, fitur in enumerate(fitur_model, 1):
+        print(f"{i}. {fitur}")
+
+    print("=" * 50)
 
 except Exception as e:
 
     raise Exception(
-        f'❌ Gagal load model: {e}'
+        f"❌ Gagal load model: {e}"
     )
-
 # ==============================
 # METRICS
 # ==============================
@@ -127,6 +148,22 @@ def home():
     })
 
 # ==============================
+# METRICS
+# ==============================
+@app.route('/metrics')
+def get_metrics():
+
+    print(">>> ENDPOINT /metrics DIPANGGIL <<<")
+
+    return jsonify({
+
+        "mae": round(metrics.get("mae", 0), 2),
+        "mse": round(metrics.get("mse", 0), 2),
+        "rmse": round(metrics.get("rmse", 0), 2),
+        "r2": round(metrics.get("r2", 0), 4)
+
+    })
+# ==============================
 # LIST PRODUK
 # ==============================
 @app.route('/produk')
@@ -177,33 +214,67 @@ def predict():
         print("📥 REQUEST MASUK")
         print(data)
 
+        print("\n========== REQUEST DARI LARAVEL ==========")
+        print(data)
+        print("=========================================\n")
+
         # ==============================
         # VALIDASI DATA
         # ==============================
         if not data:
 
             return jsonify({
-                'error': 'Data kosong'
+                "success": False,
+                "error": "Data request kosong"
             }), 400
 
+        # Field yang wajib diterima dari Laravel
         required = [
 
-            'produk',
-            'tanggal',
-            'lag1',
-            'lag2',
-            'lag3'
+            "produk",
+            "tanggal",
+
+            "lag1",
+            "lag2",
+            "lag3",
+
+            "rolling_mean_7",
+            "rolling_std_7",
+            "rolling_max_7",
+            "rolling_min_7"
 
         ]
 
-        for r in required:
+        # Validasi field
+        for field in required:
 
-            if r not in data:
+            if field not in data:
 
                 return jsonify({
-                    'error': f'{r} wajib diisi'
+
+                    "success": False,
+                    "error": f"Field '{field}' wajib dikirim"
+
                 }), 400
 
+            # Cek nilai kosong
+            if data[field] is None:
+
+                return jsonify({
+
+                    "success": False,
+                    "error": f"Field '{field}' tidak boleh null"
+
+                }), 400
+
+            if isinstance(data[field], str) and data[field].strip() == "":
+
+                return jsonify({
+
+                    "success": False,
+                    "error": f"Field '{field}' tidak boleh kosong"
+
+                }), 400
         # ==============================
         # PRODUK
         # ==============================
@@ -270,45 +341,12 @@ def predict():
         # ==============================
         # HARI LIBUR
         # ==============================
-        hari_libur = [
+        import holidays
 
-            '2026-01-01',
-
-            '2026-03-19',
-            '2026-03-20',
-
-            '2026-05-14',
-
-            '2026-05-27',
-
-            '2026-08-17',
-
-            '2026-12-25'
-
-        ]
+        id_holidays = holidays.Indonesia()
 
         is_holiday = int(
-            1 if tanggal_str in hari_libur
-            else 0
-        )
-
-        # ==============================
-        # LIBUR BESAR
-        # ==============================
-        libur_besar = [
-
-            '2026-03-20',
-            '2026-03-21',
-
-            '2026-05-27',
-
-            '2026-12-25'
-
-        ]
-
-        is_big_holiday = int(
-            1 if tanggal_str in libur_besar
-            else 0
+            tanggal in id_holidays
         )
 
         # ==============================
@@ -335,6 +373,42 @@ def predict():
         diff_1 = (
             lag_1 - lag_2
         )
+
+        # ==============================
+        # ROLLING FEATURE
+        # ==============================
+
+        try:
+
+            rolling_mean_7 = max(
+                0,
+                float(data.get("rolling_mean_7", lag_1))
+            )
+
+            rolling_std_7 = max(
+                0,
+                float(data.get("rolling_std_7", 0))
+            )
+
+            rolling_max_7 = max(
+                0,
+                float(data.get("rolling_max_7", lag_1))
+            )
+
+            rolling_min_7 = max(
+                0,
+                float(data.get("rolling_min_7", lag_1))
+            )
+
+        except (TypeError, ValueError):
+
+            # Fallback apabila Laravel tidak mengirim rolling feature
+            histori = [lag_1, lag_2, lag_3]
+
+            rolling_mean_7 = float(np.mean(histori))
+            rolling_std_7 = float(np.std(histori))
+            rolling_max_7 = float(np.max(histori))
+            rolling_min_7 = float(np.min(histori))
 
         # ==============================
         # MEAN BARANG
@@ -388,62 +462,76 @@ def predict():
         )
 
         # ==============================
-        # FITUR FINAL (13 FITUR)
+        # FITUR FINAL (16 FITUR)
         # ==============================
-        fitur = np.array([[
+        X = pd.DataFrame([{
 
-            hari,
+            "hari": hari,
 
-            bulan,
+            "bulan": bulan,
 
-            minggu_bulan,
+            "minggu_bulan": minggu_bulan,
 
-            is_weekend,
+            "is_weekend": is_weekend,
 
-            is_holiday,
+            "is_holiday": is_holiday,
 
-            is_big_holiday,
+            "lag_1": lag_1,
 
-            lag_1,
+            "lag_2": lag_2,
 
-            lag_2,
+            "lag_3": lag_3,
 
-            lag_3,
+            "diff_1": diff_1,
 
-            diff_1,
+            "mean_barang": mean_barang,
 
-            mean_barang,
+            "rolling_mean_7": rolling_mean_7,
 
-            freq_barang,
+            "rolling_std_7": rolling_std_7,
 
-            barang_encoded
+            "rolling_max_7": rolling_max_7,
 
-        ]])
+            "rolling_min_7": rolling_min_7,
 
-        print("\n📊 FITUR MODEL:")
-        print(fitur)
+            "freq_barang": freq_barang,
+
+            "barang_encoded": barang_encoded
+
+        }])
+
+        # Pastikan urutan kolom sama seperti saat training
+        X = X[fitur_model]
+
+        print("\n📊 FITUR MODEL")
+        print(X)
 
         # ==============================
-        # PREDIKSI MODEL
+        # PREDIKSI MODEL + STABILISASI
         # ==============================
-        pred = float(
-            model.predict(fitur)[0]
-        )
+        print("\n========== INPUT MODEL ==========")
+        print(X.to_string())
+        print("================================")
+        
+        pred = float(model.predict(X)[0])
 
-        # ==============================
-        # STABILISASI
-        # ==============================
+        print(f"\nPrediksi Random Forest : {pred}")
+
         avg = (
             lag_1 +
             lag_2 +
             lag_3
         ) / 3
 
+        print(f"Rata-rata Lag : {avg}")
+
         hasil = (
             pred * 0.7
         ) + (
             avg * 0.3
         )
+
+        print(f"Hasil Setelah Stabilisasi : {hasil}")
 
         # ==============================
         # BOOST LIBUR
@@ -512,9 +600,6 @@ def predict():
                 'holiday':
                     is_holiday,
 
-                'big_holiday':
-                    is_big_holiday,
-
                 'lag1':
                     lag_1,
 
@@ -539,16 +624,9 @@ def predict():
             },
 
             'metrics': {
-
-                'MAE':
-                    MAE,
-
-                'RMSE':
-                    RMSE,
-
-                'R2':
-                    R2
-
+                'MAE': round(metrics['mae'], 2),
+                'RMSE': round(metrics['rmse'], 2),
+                'R2': round(metrics['r2'], 4)
             }
 
         })
@@ -584,14 +662,13 @@ def test():
 # ==============================
 # RUN APP
 # ==============================
-if __name__ == '__main__':
-
+print("\n=== DAFTAR ROUTE ===")
+for rule in app.url_map.iter_rules():
+    print(rule)
+print("====================\n")
+print(">>> ROUTE /metrics BERHASIL DIMUAT <<<")
+if __name__ == "__main__":
     app.run(
-
-        host='127.0.0.1',
-
-        port=5000,
-
-        debug=True
-
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 5000))
     )
