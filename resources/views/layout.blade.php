@@ -15,14 +15,16 @@
 /* =========================
    GLOBAL
 ========================= */
+
 *{
+    margin:0;
+    padding:0;
     box-sizing:border-box;
+    font-family:'Poppins',sans-serif;
     transition:0.3s;
 }
 
 body{
-    margin:0;
-    font-family:'Poppins',sans-serif;
     display:flex;
     background:#f8fafc;
     color:#0f172a;
@@ -36,10 +38,11 @@ body.dark{
 /* =========================
    SIDEBAR
 ========================= */
+
 .sidebar{
     width:240px;
     min-height:100vh;
-    background:#fff;
+    background:#ffffff;
     position:fixed;
     left:0;
     top:0;
@@ -54,15 +57,15 @@ body.dark .sidebar{
 
 .sidebar h2{
     text-align:center;
-    margin-bottom:10px;
     color:#38bdf8;
+    margin-bottom:10px;
 }
 
 .user-info{
     text-align:center;
     margin-bottom:25px;
-    font-size:13px;
     color:#64748b;
+    font-size:13px;
 }
 
 body.dark .user-info{
@@ -72,6 +75,7 @@ body.dark .user-info{
 /* =========================
    MENU
 ========================= */
+
 .menu{
     display:flex;
     flex-direction:column;
@@ -83,7 +87,7 @@ body.dark .user-info{
     color:#64748b;
     padding:12px 15px;
     border-radius:10px;
-    display:block;
+    transition:.2s ease;
 }
 
 body.dark .menu a{
@@ -97,17 +101,14 @@ body.dark .menu a{
 }
 
 .menu a.active{
-    background:linear-gradient(
-        135deg,
-        #38bdf8,
-        #6366f1
-    );
-    color:white;
+    background:linear-gradient(135deg,#38bdf8,#6366f1);
+    color:#fff;
 }
 
 /* =========================
    LOGOUT
 ========================= */
+
 .logout-form{
     margin-top:15px;
 }
@@ -118,7 +119,7 @@ body.dark .menu a{
     border:none;
     border-radius:10px;
     background:#ef4444;
-    color:white;
+    color:#fff;
     cursor:pointer;
     font-size:14px;
     font-weight:500;
@@ -131,17 +132,19 @@ body.dark .menu a{
 /* =========================
    CONTENT
 ========================= */
+
 .content{
+    width:100%;
     margin-left:240px;
     padding:35px;
-    width:100%;
 }
 
 /* =========================
    CARD
 ========================= */
+
 .card{
-    background:white;
+    background:#ffffff;
     border-radius:12px;
     padding:20px;
     box-shadow:0 5px 20px rgba(0,0,0,.05);
@@ -155,6 +158,7 @@ body.dark .card{
 /* =========================
    GRID
 ========================= */
+
 .grid{
     display:grid;
     gap:15px;
@@ -163,6 +167,7 @@ body.dark .card{
 /* =========================
    FORM
 ========================= */
+
 .form-grid{
     display:grid;
     grid-template-columns:1fr 1fr;
@@ -180,29 +185,32 @@ body.dark .card{
 body.dark input,
 body.dark select{
     background:#020617;
-    color:white;
+    color:#fff;
     border:1px solid #1e293b;
 }
 
 /* =========================
    BUTTON
 ========================= */
+
 button{
-    background:linear-gradient(
-        135deg,
-        #38bdf8,
-        #6366f1
-    );
+    background:linear-gradient(135deg,#38bdf8,#6366f1);
     border:none;
     padding:12px;
-    color:white;
+    color:#fff;
     border-radius:8px;
     cursor:pointer;
 }
 
+button:hover{
+    opacity:.9;
+    transform:translateY(-2px);
+}
+
 /* =========================
-   DARK MODE TOGGLE
+   DARK MODE
 ========================= */
+
 .toggle-wrapper{
     position:fixed;
     top:20px;
@@ -222,7 +230,7 @@ button{
 .toggle-circle{
     width:22px;
     height:22px;
-    background:white;
+    background:#fff;
     border-radius:50%;
     position:absolute;
     top:3px;
@@ -240,7 +248,8 @@ body.dark .toggle-circle{
 /* =========================
    RESPONSIVE
 ========================= */
-@media(max-width:768px){
+
+@media (max-width:768px){
 
     body{
         flex-direction:column;
@@ -260,73 +269,66 @@ body.dark .toggle-circle{
     .form-grid{
         grid-template-columns:1fr;
     }
+
 }
 
 </style>
+
 </head>
 
 <body>
 
-<!-- DARK MODE -->
 <div class="toggle-wrapper" onclick="toggleMode()">
     <div class="toggle">
         <div class="toggle-circle"></div>
     </div>
 </div>
 
-<!-- SIDEBAR -->
 <div class="sidebar">
 
     <h2>📊 Sewu Joyo</h2>
 
     <div class="user-info">
-        Login:
-        <strong>
-            {{ session('username', 'Admin') }}
-        </strong>
+        Login :
+        <strong>{{ session('username', 'Admin') }}</strong>
     </div>
 
     <div class="menu">
 
-        <a href="/dashboard"
+        <a href="{{ url('/dashboard') }}"
            class="{{ request()->is('dashboard*') ? 'active' : '' }}">
             📈 Dashboard
         </a>
 
-        <a href="/penjualan"
+        <a href="{{ url('/penjualan') }}"
            class="{{ request()->is('penjualan*') ? 'active' : '' }}">
             🛒 Penjualan
         </a>
 
-        <a href="/prediksi"
+        <a href="{{ url('/prediksi') }}"
            class="{{ request()->is('prediksi*') ? 'active' : '' }}">
             🤖 Prediksi
         </a>
 
-        <a href="/analisis"
+        <a href="{{ url('/analisis') }}"
            class="{{ request()->is('analisis*') ? 'active' : '' }}">
             📊 Analisis
         </a>
 
-        <a href="/laporan"
+        <a href="{{ url('/laporan') }}"
            class="{{ request()->is('laporan*') ? 'active' : '' }}">
             📄 Laporan
         </a>
 
-        <form
-            action="{{ route('logout') }}"
-            method="POST"
-            class="logout-form"
-            onsubmit="return confirm('Yakin ingin logout?')">
+        <form action="{{ route('logout') }}"
+              method="POST"
+              class="logout-form"
+              onsubmit="return confirm('Yakin ingin logout?')">
 
             @csrf
 
-            <button
-                type="submit"
-                class="logout-btn">
-
+            <button type="submit" class="logout-btn">
                 🚪 Logout
-
             </button>
 
         </form>
@@ -335,18 +337,17 @@ body.dark .toggle-circle{
 
 </div>
 
-<!-- CONTENT -->
 <div class="content">
 
     @if(session('success'))
-        <div style="
-            background:#22c55e;
-            color:white;
-            padding:12px;
-            border-radius:10px;
-            margin-bottom:20px;
-        ">
+        <div style="background:#22c55e;color:white;padding:12px;border-radius:10px;margin-bottom:20px;">
             {{ session('success') }}
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div style="background:#ef4444;color:white;padding:12px;border-radius:10px;margin-bottom:20px;">
+            {{ session('error') }}
         </div>
     @endif
 
@@ -362,21 +363,18 @@ function toggleMode(){
 
     localStorage.setItem(
         'mode',
-        document.body.classList.contains('dark')
-        ? 'dark'
-        : 'light'
+        document.body.classList.contains('dark') ? 'dark' : 'light'
     );
+
 }
 
-window.onload = function(){
+window.addEventListener('load', function(){
 
-    if(
-        localStorage.getItem('mode')
-        === 'dark'
-    ){
+    if(localStorage.getItem('mode') === 'dark'){
         document.body.classList.add('dark');
     }
-}
+
+});
 
 </script>
 

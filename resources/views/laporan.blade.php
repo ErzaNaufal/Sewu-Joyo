@@ -1,74 +1,66 @@
 @extends('layout')
 
-@section('title','Laporan')
+@section('title', 'Laporan')
 
 @section('content')
 
-<h1 style="margin-bottom:25px;">📄 Laporan Stok Barang</h1>
-
 @php
-$data = $data ?? [];
+    $data = $data ?? [];
 
-$total = count($data);
+    $total = count($data);
 
-$over = collect($data)->where('status','Overstock')->count();
-$under = collect($data)->where('status','Understock')->count();
-$aman = collect($data)->where('status','Aman')->count();
+    $over = collect($data)->where('status', 'Overstock')->count();
+    $under = collect($data)->where('status', 'Understock')->count();
+    $aman = collect($data)->where('status', 'Aman')->count();
 
-$max = $total ? collect($data)->sortByDesc('prediksi')->first() : null;
-$min = $total ? collect($data)->sortBy('prediksi')->first() : null;
+    $max = $total ? collect($data)->sortByDesc('prediksi')->first() : null;
+    $min = $total ? collect($data)->sortBy('prediksi')->first() : null;
 
-$over_p = $total ? round(($over/$total)*100,1) : 0;
-$under_p = $total ? round(($under/$total)*100,1) : 0;
-$aman_p = $total ? round(($aman/$total)*100,1) : 0;
+    $over_p = $total ? round(($over / $total) * 100, 1) : 0;
+    $under_p = $total ? round(($under / $total) * 100, 1) : 0;
+    $aman_p = $total ? round(($aman / $total) * 100, 1) : 0;
 @endphp
 
-<!-- =======================
-    HEADER
-======================= -->
+<h1 style="margin-bottom:25px;">📄 Laporan Stok Barang</h1>
+
 <div class="card mb">
+
     <h3>Toko Sewu Joyo</h3>
+
     <p class="muted">
         Laporan Analisis Stok Barang<br>
-        Tanggal: {{ date('d-m-Y') }}
+        Tanggal: {{ now()->format('d-m-Y') }}
     </p>
 
     <hr class="divider">
 
     <p class="desc">
-        Laporan ini menyajikan hasil analisis kondisi stok berdasarkan prediksi penjualan 
-        sebagai dasar pengambilan keputusan dalam pengelolaan persediaan barang.
+        Laporan ini menyajikan hasil analisis kondisi stok berdasarkan
+        prediksi penjualan sebagai dasar pengambilan keputusan dalam
+        pengelolaan persediaan barang.
     </p>
+
 </div>
 
-<!-- =======================
-    FILTER & EXPORT
-======================= -->
 <div class="card mb">
-<form method="GET" class="filter-box">
 
-    <input type="text" name="search"
-        placeholder="🔍 Cari produk..."
-        value="{{ request('search') }}">
+    <div class="filter-box">
 
-    <select name="status">
-        <option value="">Semua Status</option>
-        <option value="Overstock" {{ request('status')=='Overstock'?'selected':'' }}>Overstock</option>
-        <option value="Understock" {{ request('status')=='Understock'?'selected':'' }}>Understock</option>
-        <option value="Aman" {{ request('status')=='Aman'?'selected':'' }}>Aman</option>
-    </select>
+        <a href="{{ url('/laporan/export/pdf') }}"
+           target="_blank"
+           class="btn-export">
+            ⬇️ Export PDF
+        </a>
 
-    <button type="submit">Filter</button>
+        <a href="{{ url('/laporan/export/excel') }}"
+           class="btn-export">
+            ⬇️ Export Excel
+        </a>
 
-    <a href="/laporan/export/pdf" target="_blank" class="btn-export">⬇️ PDF</a>
-    <a href="/laporan/export/excel" class="btn-export">⬇️ Excel</a>
+    </div>
 
-</form>
 </div>
 
-<!-- =======================
-    RINGKASAN
-======================= -->
 <div class="grid summary mb">
 
     <div class="card stat">
@@ -93,193 +85,321 @@ $aman_p = $total ? round(($aman/$total)*100,1) : 0;
 
 </div>
 
-<!-- =======================
-    INSIGHT
-======================= -->
 <div class="card mb">
+
     <h3>📌 Insight</h3>
 
     <ul class="list">
+
         <li>
-            🔥 Permintaan tertinggi:
-            <b>{{ $max['produk'] ?? '-' }}</b>
+            🔥 Permintaan tertinggi :
+            <strong>{{ $max['produk'] ?? '-' }}</strong>
             ({{ $max ? round($max['prediksi']) : 0 }})
         </li>
 
         <li>
-            📉 Permintaan terendah:
-            <b>{{ $min['produk'] ?? '-' }}</b>
+            📉 Permintaan terendah :
+            <strong>{{ $min['produk'] ?? '-' }}</strong>
             ({{ $min ? round($min['prediksi']) : 0 }})
         </li>
+
     </ul>
+
 </div>
 
-<!-- =======================
-    TABEL
-======================= -->
 <div class="card table-box">
 
 @if($total > 0)
 
 <table class="table">
 
-<tr>
-<th>No</th>
-<th>Produk</th>
-<th>Stok</th>
-<th>Prediksi</th>
-<th>Status</th>
-<th>Keterangan</th>
-</tr>
+    <thead>
+    <tr>
+        <th>No</th>
+        <th>Produk</th>
+        <th>Stok</th>
+        <th>Prediksi</th>
+        <th>Status</th>
+        <th>Keterangan</th>
+    </tr>
+    </thead>
 
-@foreach($data as $i => $d)
-<tr>
-<td>{{ $i+1 }}</td>
+    <tbody>
 
-<td class="left">{{ $d['produk'] }}</td>
+    @foreach($data as $i => $d)
 
-<td>{{ $d['stok'] }}</td>
+    <tr>
 
-<td>{{ round($d['prediksi']) }}</td>
+        <td>{{ $i + 1 }}</td>
 
-<td class="{{ strtolower($d['status']) }}">
-@if($d['status']=='Overstock')
-🔴 {{ $d['status'] }}
-@elseif($d['status']=='Understock')
-🟡 {{ $d['status'] }}
-@else
-🟢 {{ $d['status'] }}
-@endif
-</td>
+        <td class="left">{{ $d['produk'] }}</td>
 
-<td>
-@if($d['status']=='Overstock') Stok melebihi kebutuhan
-@elseif($d['status']=='Understock') Stok kurang, perlu penambahan
-@else Stok dalam kondisi ideal
-@endif
-</td>
+        <td>{{ $d['stok'] }}</td>
 
-</tr>
-@endforeach
+        <td>{{ round($d['prediksi']) }}</td>
+
+        <td>
+
+            @if($d['status']=='Overstock')
+            <span class="badge badge-red">🔴 Overstock</span>
+
+            @elseif($d['status']=='Understock')
+            <span class="badge badge-yellow">🟡 Understock</span>
+
+            @else
+            <span class="badge badge-green">🟢 Aman</span>
+            @endif  
+
+        </td>
+
+        <td>
+
+            @if($d['status'] == 'Overstock')
+
+                Stok melebihi kebutuhan
+
+            @elseif($d['status'] == 'Understock')
+
+                Stok kurang, perlu penambahan
+
+            @else
+
+                Stok dalam kondisi ideal
+
+            @endif
+
+        </td>
+
+    </tr>
+
+    @endforeach
+
+    </tbody>
 
 </table>
 
 @else
 
 <div class="empty">
+
     <h3>📭 Data belum tersedia</h3>
-    <p>Silakan lakukan analisis terlebih dahulu</p>
-    <a href="/analisis">➡️ Ke halaman Analisis</a>
+
+    <p>Silakan lakukan analisis terlebih dahulu.</p>
+
+    <a href="{{ url('/analisis') }}">
+        ➜ Ke Halaman Analisis
+    </a>
+
 </div>
 
 @endif
 
 </div>
 
-<!-- =======================
-    CHART
-======================= -->
 @if($total > 0)
+
 <div class="card mt">
-    <h3>📊 Distribusi Status</h3>
-    <canvas id="chartStatus"></canvas>
-</div>
-@endif
 
-<!-- =======================
-    SCRIPT
-======================= -->
-@if($total > 0)
+    <h3>📊 Distribusi Status</h3>
+
+    <div class="chart-container">
+        <canvas id="chartStatus"></canvas>
+    </div>
+
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
 <script>
+
 new Chart(document.getElementById('chartStatus'), {
-type: 'pie',
-data: {
-labels: ['Overstock','Understock','Aman'],
-datasets: [{
-data: [{{ $over }}, {{ $under }}, {{ $aman }}],
-backgroundColor: ['#ef4444','#facc15','#22c55e']
-}]
-},
-options: {
-plugins: {
-datalabels: {
-color: '#fff',
-formatter: (value) => ((value / {{ $total }}) * 100).toFixed(1) + '%'
-}
-}
-},
-plugins: [ChartDataLabels]
+
+    type: 'pie',
+
+    data: {
+        labels: ['Overstock', 'Understock', 'Aman'],
+        datasets: [{
+            data: [{{ $over }}, {{ $under }}, {{ $aman }}],
+            backgroundColor: [
+                '#ef4444',
+                '#facc15',
+                '#22c55e'
+            ],
+            borderColor: '#ffffff',
+            borderWidth: 2
+        }]
+    },
+
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+
+        plugins: {
+
+            legend: {
+                position: 'top',
+                labels: {
+                    padding: 20,
+                    boxWidth: 40,
+                    font: {
+                        size: 13
+                    }
+                }
+            },
+
+            datalabels: {
+                color: '#ffffff',
+
+                font: {
+                    weight: 'bold',
+                    size: 14
+                },
+
+                formatter: (value) => {
+
+                    // Jangan tampilkan label jika nilainya 0
+                    if (value === 0) {
+                        return null;
+                    }
+
+                    return ((value / {{ $total }}) * 100).toFixed(1) + '%';
+                }
+
+            }
+
+        }
+
+    },
+
+    plugins: [ChartDataLabels]
+
 });
+
 </script>
+
 @endif
 
 <style>
 
-.mb { margin-bottom:20px; }
-.mt { margin-top:20px; }
+.mb{margin-bottom:20px;}
+.mt{margin-top:20px;}
 
-.muted { opacity:0.7; }
-.desc { line-height:1.8; }
-.divider { margin:15px 0; opacity:0.2; }
+.muted{opacity:.7;}
+.desc{line-height:1.8;}
+.divider{margin:15px 0;opacity:.2;}
 
-.filter-box {
-display:flex;
-gap:10px;
-flex-wrap:wrap;
-align-items:center;
-}
-
-.filter-box input,
-.filter-box select {
-padding:10px;
-border-radius:8px;
-border:none;
-}
-
-.summary {
+.summary{
+display:grid;
 grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
 gap:20px;
 }
 
-.stat { text-align:center; }
+.stat{text-align:center;}
 
-.red { color:#ef4444; }
-.yellow { color:#facc15; }
-.green { color:#22c55e; }
+.red{color:#ef4444;}
+.yellow{color:#facc15;}
+.green{color:#22c55e;}
 
-.table {
+.table{
 width:100%;
 border-collapse:collapse;
 text-align:center;
 }
 
-.table td, .table th {
-padding:10px;
-border-bottom:1px solid rgba(255,255,255,0.05);
+.table th,
+.table td{
+padding:14px;
+border-bottom:1px solid rgba(255,255,255,.08);
 }
 
-.left { text-align:left; }
-
-.empty {
-text-align:center;
-padding:40px;
-opacity:0.7;
+.table tbody tr:hover{
+background:rgba(255,255,255,.04);
+transition:.2s;
 }
 
-.list {
+.list li{
+margin-bottom:12px;
+}
+
+.left{text-align:left;}
+
+
+.list{
 list-style:none;
 padding:0;
 line-height:1.8;
 }
 
-.btn-export {
-background: linear-gradient(135deg,#38bdf8,#6366f1);
-padding:10px;
+.empty{
+text-align:center;
+padding:40px;
+opacity:.8;
+}
+
+.filter-box{
+display:flex;
+gap:12px;
+flex-wrap:wrap;
+}
+
+.btn-export{
+background:linear-gradient(135deg,#38bdf8,#6366f1);
+padding:10px 16px;
 border-radius:8px;
-color:white;
+color:#fff;
 text-decoration:none;
+font-size:15px;
+font-weight:600;
+transition:.2s;
+}
+
+.btn-export:hover{
+opacity:.9;
+transform:translateY(-2px);
+}
+
+.card{
+border-radius:18px;
+}
+
+
+.badge{
+display:inline-flex;
+align-items:center;
+justify-content:center;
+padding:7px 14px;
+border-radius:999px;
+font-size:13px;
+font-weight:600;
+gap:6px;
+}
+
+.badge-red{
+background:#ef4444;
+color:#fff;
+}
+
+.badge-yellow{
+background:#facc15;
+color:#000;
+}
+
+.badge-green{
+background:#22c55e;
+color:#fff;
+}
+
+.chart-container{
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    height: 320px;
+    margin: 20px auto 0;
+}
+
+.chart-container canvas{
+    width: 100% !important;
+    height: 100% !important;
 }
 
 </style>

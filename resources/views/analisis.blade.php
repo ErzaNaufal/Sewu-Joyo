@@ -4,7 +4,7 @@
 
 @section('content')
 
-<h1 style="margin-bottom:25px;">📈 Analisis Stok & Rekomendasi</h1>
+<h1 style="margin-bottom:18px;font-size:34px;">📈 Analisis Stok & Rekomendasi</h1>
 
 @php
 $total = count($data ?? []);
@@ -25,7 +25,7 @@ $prioritas = collect($data ?? [])->where('status','Understock')->take(5);
 <div class="top-bar">
 
     <div class="update">
-        🕒 Update: {{ now()->format('d-m-Y H:i') }}
+        🕒 Update Terakhir: {{ now()->format('d-m-Y H:i') }}
     </div>
 
     <div class="actions">
@@ -69,12 +69,15 @@ $prioritas = collect($data ?? [])->where('status','Understock')->take(5);
 <div class="grid insight-grid">
 
     <div class="card">
-        <h3>⚡ Rekomendasi</h3>
+
+        <h3>📖 Kriteria Analisis</h3>
+
         <ul class="list">
-            <li>🔴 Kurangi pembelian: <b>{{ $over }}</b></li>
-            <li>🟡 Tambah stok: <b>{{ $under }}</b></li>
-            <li>🟢 Stabil: <b>{{ $aman }}</b></li>
+            <li>🔴 <b>Overstock</b><br>Stok lebih tinggi dibanding hasil prediksi.</li>
+            <li>🟢 <b>Aman</b><br>Stok sesuai dengan hasil prediksi.</li>
+            <li>🟡 <b>Understock</b><br>Stok lebih rendah dibanding hasil prediksi.</li>
         </ul>
+
     </div>
 
     <div class="card">
@@ -91,8 +94,21 @@ $prioritas = collect($data ?? [])->where('status','Understock')->take(5);
     <div class="card">
         <h3>📌 Insight</h3>
         <ul class="list">
-            <li>🔥 {{ $max['produk'] ?? '-' }} ({{ $max ? round($max['prediksi']) : 0 }})</li>
-            <li>📉 {{ $min['produk'] ?? '-' }} ({{ $min ? round($min['prediksi']) : 0 }})</li>
+
+        <li>
+        🔥 Prediksi Tertinggi
+        <br>
+        <b>{{ $max['produk'] ?? '-' }}</b>
+        ({{ $max ? round($max['prediksi']) : 0 }} pcs)
+        </li>
+
+        <li>
+        📉 Prediksi Terendah
+        <br>
+        <b>{{ $min['produk'] ?? '-' }}</b>
+        ({{ $min ? round($min['prediksi']) : 0 }} pcs)
+        </li>
+
         </ul>
     </div>
 
@@ -102,17 +118,19 @@ $prioritas = collect($data ?? [])->where('status','Understock')->take(5);
     CHART
 ======================= -->
 @if($total > 0)
-<div class="grid chart">
+<div class="chart-wrapper">
 
-    <div class="card">
-        <h3>📊 Stok vs Prediksi</h3>
-        <canvas id="barChart"></canvas>
-    </div>
+<div class="card chart-card bar-card">
+    <h3>📊 Stok vs Prediksi</h3>
 
-    <div class="card center">
-        <h3>📊 Distribusi</h3>
-        <canvas id="pieChart"></canvas>
-    </div>
+    <canvas id="barChart"></canvas>
+</div>
+
+    <div class="card center chart-card pie-card">
+
+    <h3>📊 Distribusi</h3>
+    <canvas id="pieChart"></canvas>
+</div>
 
 </div>
 @endif
@@ -126,31 +144,51 @@ $prioritas = collect($data ?? [])->where('status','Understock')->take(5);
 
 <table class="table">
 
+<thead>
 <tr>
-<th>No</th>
-<th>Produk</th>
-<th>Stok</th>
-<th>Prediksi</th>
-<th>Status</th>
-<th>Keterangan</th>
-<th>Rekomendasi</th>
+    <th>No</th>
+    <th>Produk</th>
+    <th>Stok</th>
+    <th>Prediksi</th>
+    <th>Selisih</th>
+    <th>Status</th>
+    <th>Keterangan</th>
+    <th>Rekomendasi</th>
 </tr>
+</thead>
+
+<tbody>
 
 @foreach($data as $i => $d)
+
 <tr>
 <td>{{ $i+1 }}</td>
 <td class="left">{{ $d['produk'] }}</td>
 <td>{{ $d['stok'] }}</td>
 <td>{{ round($d['prediksi']) }}</td>
+<td>
+    @php
+        $selisih = $d['stok'] - round($d['prediksi']);
+    @endphp
 
-<td class="{{ strtolower($d['status']) }}">
-@if($d['status']=='Overstock')
-🔴 {{ $d['status'] }}
-@elseif($d['status']=='Understock')
-🟡 {{ $d['status'] }}
-@else
-🟢 {{ $d['status'] }}
-@endif
+    @if($selisih > 0)
+        +{{ $selisih }}
+    @elseif($selisih < 0)
+        {{ $selisih }}
+    @else
+        0
+    @endif
+</td>
+
+
+<td>
+    @if($d['status']=='Overstock')
+        <span class="badge badge-red">🔴 Overstock</span>
+    @elseif($d['status']=='Understock')
+        <span class="badge badge-yellow">🟡 Understock</span>
+    @else
+        <span class="badge badge-green">🟢 Aman</span>
+    @endif
 </td>
 
 <td>
@@ -164,6 +202,8 @@ $prioritas = collect($data ?? [])->where('status','Understock')->take(5);
 
 </tr>
 @endforeach
+
+</tbody>
 
 </table>
 
@@ -216,24 +256,48 @@ backgroundColor: '#6366f1'
 ]
 },
 options:{
-responsive:true,
-scales:{ y:{ beginAtZero:true } }
+    responsive:true,
+    maintainAspectRatio:false,
+    plugins:{
+        legend:{
+            position:'top'
+        }
+    },
+    scales:{
+        y:{
+            beginAtZero:true
+        },
+        x:{
+            ticks:{
+                maxRotation:45,
+                minRotation:45
+            }
+        }
+    }
 }
 });
 
-// PIE
+// PIE CHART
 new Chart(document.getElementById('pieChart'), {
-type: 'doughnut',
-data: {
-labels: ['Overstock','Understock','Aman'],
-datasets: [{
-data: [{{ $over }}, {{ $under }}, {{ $aman }}],
-backgroundColor: ['#ef4444','#facc15','#22c55e']
-}]
-},
-options:{ cutout:'65%' }
+    type: 'doughnut',
+    data: {
+        labels: ['Overstock','Understock','Aman'],
+        datasets: [{
+            data: [{{ $over }}, {{ $under }}, {{ $aman }}],
+            backgroundColor: ['#ef4444','#facc15','#22c55e']
+        }]
+    },
+    options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        cutout:'70%',
+        plugins:{
+            legend:{
+                position:'top'
+            }
+        }
+    }
 });
-
 </script>
 @endif
 
@@ -249,67 +313,198 @@ flex-wrap:wrap;
 gap:10px;
 }
 
-.actions {
+.actions{
 display:flex;
-gap:10px;
 align-items:center;
+gap:10px;
+flex-wrap:wrap;
+justify-content:flex-end;
 }
 
-#searchTable {
-padding:10px;
-border-radius:8px;
+#searchTable{
+width:250px;
+padding:11px 15px;
+border-radius:10px;
 border:none;
+outline:none;
 background:#1e293b;
-color:white;
+color:#fff;
 }
 
-.summary {
-grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
-margin-bottom:20px;
-}
-
-.insight-grid {
-grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+.summary{
+display:grid;
+grid-template-columns:repeat(4,1fr);
 gap:20px;
-margin-bottom:20px;
+margin-bottom:25px;
 }
 
-.chart {
-grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+.insight-grid{
+display:grid;
+grid-template-columns:repeat(3,1fr);
 gap:20px;
-margin-bottom:20px;
+margin-bottom:25px;
+align-items:stretch;
 }
 
-.stat { text-align:center; }
+.insight-grid .card{
+display:flex;
+flex-direction:column;
+min-height:250px;
+}
+
+.chart-wrapper{
+display:flex;
+flex-direction:column;
+gap:20px;
+margin-bottom:25px;
+}
+
+@media (max-width:992px){
+
+.summary{
+grid-template-columns:repeat(2,1fr);
+}
+
+.insight-grid{
+grid-template-columns:1fr;
+}
+
+.chart{
+grid-template-columns:1fr;
+}
+
+}
+
+@media (max-width:768px){
+
+.summary{
+grid-template-columns:1fr;
+}
+
+.actions{
+width:100%;
+}
+
+#searchTable{
+width:100%;
+}
+
+}
+
+
+.stat{
+padding:22px;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+min-height:110px;
+}
+
+.stat h2{
+
+font-size:32px;
+margin-top:10px;
+
+}
 .red { color:#ef4444; }
 .yellow { color:#facc15; }
 .green { color:#22c55e; }
 
-.table {
+.table-box{
+overflow-x:auto;
+}
+
+.card h3{
+    margin-bottom:18px;
+    font-size:22px;
+    font-weight:600;
+}
+
+
+.table{
 width:100%;
 border-collapse:collapse;
 text-align:center;
+min-width:950px;
 }
 
-.table td, .table th {
-padding:10px;
-border-bottom:1px solid rgba(255,255,255,0.05);
+.table td,
+.table th{
+
+padding:14px 16px;
+border-bottom:1px solid rgba(255,255,255,.08);
+
+}
+
+.table tbody tr:hover{
+background:rgba(255,255,255,.04);
+transition:.2s;
 }
 
 .left { text-align:left; }
 
-.btn-export {
-background: linear-gradient(135deg,#38bdf8,#6366f1);
-padding:10px;
+.btn-export{
+
+display:inline-flex;
+align-items:center;
+gap:6px;
+
+background:linear-gradient(135deg,#38bdf8,#6366f1);
+padding:10px 14px;
 border-radius:8px;
 color:white;
 text-decoration:none;
+
 }
 
 .list {
 list-style:none;
 padding:0;
 line-height:1.8;
+}
+
+.badge{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:5px;
+    padding:8px 14px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:700;
+    white-space:nowrap;
+}
+
+.badge-red{
+background:#ef4444;
+color:#fff;
+}
+
+.badge-yellow{
+background:#facc15;
+color:#000;
+}
+
+.badge-green{
+background:#22c55e;
+color:#fff;
+}
+
+.chart-card{
+width:100%;
+padding:20px;
+}
+
+.bar-card canvas{
+height:420px !important;
+}
+
+.pie-card canvas{
+width:300px !important;
+height:300px !important;
+margin:auto;
+display:block;
 }
 
 </style>

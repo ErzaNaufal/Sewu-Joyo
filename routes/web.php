@@ -10,11 +10,8 @@ use App\Http\Controllers\DashboardController;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', function () {
-    return redirect('/login');
-});
+Route::redirect('/', '/login');
 
-/*
 /*
 |--------------------------------------------------------------------------
 | LOGIN PAGE
@@ -23,13 +20,13 @@ Route::get('/', function () {
 
 Route::get('/login', function () {
 
-    if (session('login')) {
-        return redirect('/dashboard');
+    if (session()->has('login')) {
+        return redirect()->route('dashboard');
     }
 
     return view('login');
 
-});
+})->name('login');
 
 /*
 |--------------------------------------------------------------------------
@@ -49,7 +46,7 @@ Route::post('/login', function (Request $request) {
             'username' => 'admin'
         ]);
 
-        return redirect('/dashboard');
+        return redirect()->route('dashboard');
     }
 
     return back()->with(
@@ -57,7 +54,7 @@ Route::post('/login', function (Request $request) {
         'Username atau Password salah'
     );
 
-});
+})->name('login.process');
 
 /*
 |--------------------------------------------------------------------------
@@ -69,7 +66,8 @@ Route::post('/logout', function () {
 
     session()->flush();
 
-    return redirect('/login')
+    return redirect()
+        ->route('login')
         ->with(
             'success',
             'Berhasil logout'
@@ -94,7 +92,7 @@ Route::middleware(['checklogin'])->group(function () {
     Route::get(
         '/dashboard',
         [DashboardController::class, 'index']
-    );
+    )->name('dashboard');
 
     /*
     |--------------------------------------------------------------------------
@@ -105,12 +103,12 @@ Route::middleware(['checklogin'])->group(function () {
     Route::get(
         '/penjualan',
         [DashboardController::class, 'penjualanView']
-    );
+    )->name('penjualan');
 
     Route::post(
         '/penjualan/simpan',
         [DashboardController::class, 'transaksi']
-    );
+    )->name('penjualan.simpan');
 
     /*
     |--------------------------------------------------------------------------
@@ -121,12 +119,12 @@ Route::middleware(['checklogin'])->group(function () {
     Route::get(
         '/prediksi',
         [DashboardController::class, 'prediksiView']
-    );
+    )->name('prediksi');
 
     Route::post(
         '/prediksi',
         [DashboardController::class, 'prediksi']
-    );
+    )->name('prediksi.proses');
 
     /*
     |--------------------------------------------------------------------------
@@ -137,7 +135,7 @@ Route::middleware(['checklogin'])->group(function () {
     Route::get(
         '/analisis',
         [DashboardController::class, 'analisis']
-    );
+    )->name('analisis');
 
     /*
     |--------------------------------------------------------------------------
@@ -148,16 +146,16 @@ Route::middleware(['checklogin'])->group(function () {
     Route::get(
         '/laporan',
         [DashboardController::class, 'laporan']
-    );
+    )->name('laporan');
 
     Route::get(
         '/laporan/export/pdf',
         [DashboardController::class, 'exportPdf']
-    );
+    )->name('laporan.pdf');
 
     Route::get(
         '/laporan/export/excel',
         [DashboardController::class, 'exportExcel']
-    );
+    )->name('laporan.excel');
 
 });

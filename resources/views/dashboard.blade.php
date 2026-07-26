@@ -4,6 +4,7 @@
 
 @section('content')
 
+
 <h1 style="margin-bottom:25px;">📊 Dashboard Sistem</h1>
 
 {{-- ALERT ERROR --}}
@@ -21,10 +22,10 @@
 @endif
 
 @php
-$total_produk = count($produk ?? []);
-$total_transaksi = count($penjualan ?? []);
+$total_produk = $totalProduk;
+$total_transaksi = $totalTransaksi;
 $total_prediksi = count($history ?? []);
-$last_transaksi = collect($penjualan ?? [])->last();
+$last_transaksi = collect($penjualan ?? [])->first();
 @endphp
 
 <!-- =======================
@@ -43,13 +44,13 @@ $last_transaksi = collect($penjualan ?? [])->last();
     </div>
 
     <div class="card">
-        <p>Total Prediksi</p>
-        <h2>{{ $total_prediksi }}</h2>
+        <p>Total Penjualan</p>
+        <h2>{{ $totalPenjualan }}</h2>
     </div>
 
     <div class="card">
-        <p>Status Sistem</p>
-        <h2 style="color:lime;">Aktif</h2>
+        <p>Produk Terlaris</p>
+        <h2>{{ ucfirst($produkTerlaris) }}</h2>
     </div>
 
 </div>
@@ -67,7 +68,22 @@ $last_transaksi = collect($penjualan ?? [])->last();
     <div class="card">
         <h3>🛒 Aktivitas Terakhir</h3>
         <p>
-            {{ $last_transaksi['produk'] ?? 'Belum ada transaksi' }}
+            @if($last_transaksi)
+
+            <p>
+                <strong>{{ ucfirst($last_transaksi['produk']) }}</strong><br>
+
+                {{ $last_transaksi['jumlah'] }} pcs<br>
+
+                {{ $last_transaksi['tanggal'] }}
+
+            </p>
+
+            @else
+
+            <p>Belum ada transaksi</p>
+
+            @endif
         </p>
     </div>
 
@@ -108,7 +124,7 @@ $last_transaksi = collect($penjualan ?? [])->last();
                 <th>Jumlah</th>
             </tr>
 
-            @foreach(array_slice($penjualan, -5) as $p)
+            @foreach(array_slice($penjualan, 0, 5) as $p)
             <tr>
                 <td>{{ $p['tanggal'] }}</td>
                 <td class="left">{{ $p['produk'] }}</td>
@@ -133,7 +149,7 @@ $last_transaksi = collect($penjualan ?? [])->last();
                 <th>Prediksi</th>
             </tr>
 
-            @foreach(array_slice($history, -5) as $h)
+            @foreach(array_slice($history, 0, 5) as $h)
             <tr>
                 <td>{{ $h['tanggal'] }}</td>
                 <td class="left">{{ $h['produk'] }}</td>

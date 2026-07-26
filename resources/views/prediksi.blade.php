@@ -186,13 +186,19 @@
     CHART
 ========================= */
 .chart-wrapper{
+
     width:100%;
-    margin-top:25px;
+
+    overflow-x:auto;
+
 }
 
 .chart-wrapper canvas{
+
     width:100% !important;
-    height:260px !important;
+
+    max-width:100%;
+
 }
 
 /* =========================
@@ -218,6 +224,22 @@ body.dark .info-box{
 </h1>
 
 {{-- ALERT --}}
+@if(session('success'))
+
+<div style="
+background:#22c55e;
+padding:12px;
+border-radius:10px;
+margin-bottom:20px;
+color:white;
+">
+
+    {{ session('success') }}
+
+</div>
+
+@endif
+
 @if(session('error'))
 <div style="
 background:#ef4444;
@@ -235,6 +257,7 @@ color:white;
 ======================= --}}
 <div class="grid summary-grid">
 
+    {{-- MODEL --}}
     <div class="card stat-card">
         <p>Model</p>
         <h2 style="color:#38bdf8;">
@@ -242,6 +265,7 @@ color:white;
         </h2>
     </div>
 
+    {{-- STATUS --}}
     <div class="card stat-card">
         <p>Status</p>
         <h2 style="color:#22c55e;">
@@ -249,41 +273,41 @@ color:white;
         </h2>
     </div>
 
-    <div class="card stat-card">
+{{-- EVALUASI MODEL --}}
+<div class="card stat-card">
 
-        <p>Evaluasi Model</p>
+    <p>Evaluasi Model</p>
 
-        @if(isset($hasil['metrics']))
+    @if(!empty($metrics))
 
-            <h2 style="color:#facc15;">
-                R²: {{ $hasil['metrics']['R2'] }}
-            </h2>
+        <h2 style="color:#facc15;">
+            R² {{ number_format($metrics['r2'], 4) }}
+        </h2>
 
-            <small>
-                MAE: {{ $hasil['metrics']['MAE'] }}
-                |
-                RMSE: {{ $hasil['metrics']['RMSE'] }}
-            </small>
+        <small style="display:block; line-height:1.8;">
+            MAE : {{ number_format($metrics['mae'], 2) }} <br>
+            MSE : {{ number_format($metrics['mse'], 2) }} <br>
+            RMSE : {{ number_format($metrics['rmse'], 2) }}
+        </small>
 
-        @else
+    @else
 
-            <h2 style="opacity:0.5;">-</h2>
+        <h2 style="opacity:.5;">-</h2>
 
-            <small>
-                Belum ada evaluasi
-            </small>
+        <small>
+            Belum ada evaluasi
+        </small>
 
-        @endif
-
-    </div>
+    @endif
 
 </div>
+
+</div> {{-- ← Penutup summary-grid --}}
 
 {{-- =======================
     FORM + HASIL
 ======================= --}}
 <div class="main-grid">
-
     {{-- FORM --}}
     <div class="card">
 
@@ -291,7 +315,7 @@ color:white;
             📥 Input Prediksi
         </h3>
 
-        <form method="POST" action="/prediksi">
+        <form method="POST" action="{{ url('/prediksi') }}">
         @csrf
 
         <div class="form-grid">
@@ -309,7 +333,9 @@ color:white;
 
                     @foreach($produk as $p)
 
-                    <option value="{{ $p }}">
+                    <option
+                        value="{{ $p }}"
+                        {{ old('produk') == $p ? 'selected' : '' }}>
                         {{ $p }}
                     </option>
 
@@ -327,27 +353,13 @@ color:white;
                 <input
                     type="date"
                     name="tanggal"
+                    value="{{ old('tanggal') }}"
                     required
                 >
 
             </div>
 
             {{-- PENJUALAN --}}
-            <div class="form-group" style="grid-column:1/-1;">
-
-                <label>
-                    Penjualan Hari Ini
-                </label>
-
-                <input
-                    type="number"
-                    name="penjualan"
-                    min="0"
-                    placeholder="Contoh: 25"
-                    required
-                >
-
-            </div>
 
         </div>
 
@@ -367,11 +379,12 @@ color:white;
             Sistem akan otomatis:
 
             <ul>
-                <li>Mengambil histori penjualan sebelumnya</li>
-                <li>Menghitung lag 1, lag 2, dan lag 3 otomatis</li>
-                <li>Mendeteksi weekend dan hari libur</li>
-                <li>Menggunakan feature engineering time-series</li>
-                <li>Melakukan prediksi stok menggunakan Random Forest</li>
+                <li>Membaca histori penjualan.</li>
+                <li>Membuat rekap penjualan harian.</li>
+                <li>Menghitung Lag-1, Lag-2, dan Lag-3.</li>
+                <li>Menghitung Rolling Mean, Rolling Standard Deviation, Rolling Maximum, dan Rolling Minimum.</li>
+                <li>Mengirim fitur ke model Random Forest.</li>
+                <li>Menampilkan hasil prediksi kebutuhan stok.</li>
             </ul>
 
         </div>
@@ -388,7 +401,7 @@ color:white;
             <h3>📊 Hasil Prediksi</h3>
 
             @if(isset($hasil))
-
+            
                 <h2 style="margin-top:10px;">
                     📦 {{ $hasil['produk'] }}
                 </h2>
@@ -487,21 +500,21 @@ color:white;
                         <div class="feature-item">
                             Trend:
                             <b>
-                                {{ $hasil['fitur']['diff_1'] }}
+                                {{ $hasil['fitur']['diff_1'] ?? 0 }}
                             </b>
                         </div>
 
                         <div class="feature-item">
                             Weekend:
                             <b>
-                                {{ $hasil['fitur']['weekend'] }}
+                                {{ $hasil['fitur']['weekend'] ?? 0 }}
                             </b>
                         </div>
 
                         <div class="feature-item">
                             Holiday:
                             <b>
-                                {{ $hasil['fitur']['holiday'] }}
+                                {{ $hasil['fitur']['holiday'] ?? 0 }}
                             </b>
                         </div>
 
@@ -563,33 +576,45 @@ color:white;
 
     @if(!empty($history))
 
+    <div style="overflow-x:auto;">
+
     <table class="table">
 
-        <tr>
-            <th>Tanggal</th>
-            <th>Produk</th>
-            <th>Prediksi</th>
-        </tr>
+        <thead>
 
-        @foreach(array_reverse($history) as $h)
+            <tr>
+                <th>Tanggal</th>
+                <th>Produk</th>
+                <th>Prediksi</th>
+            </tr>
 
-        <tr>
+        </thead>
 
-            <td>{{ $h['tanggal'] }}</td>
+        <tbody>
 
-            <td class="left">
-                {{ $h['produk'] }}
-            </td>
+            @foreach(array_reverse($history) as $h)
 
-            <td>
-                {{ round($h['prediksi']) }}
-            </td>
+            <tr>
 
-        </tr>
+                <td>{{ $h['tanggal'] }}</td>
 
-        @endforeach
+                <td class="left">
+                    {{ $h['produk'] }}
+                </td>
+
+                <td>
+                    {{ round($h['prediksi']) }}
+                </td>
+
+            </tr>
+
+            @endforeach
+
+        </tbody>
 
     </table>
+
+    </div>
 
     @else
 
@@ -633,27 +658,41 @@ new Chart(document.getElementById('chart'), {
 
                 {{ $total }}
 
-            ]
+            ],
+
+            backgroundColor: '#38bdf8',
+
+            borderRadius: 6
 
         }]
 
     },
 
-    options: {
+        options: {
 
-        responsive:true,
+            responsive: true,
 
-        maintainAspectRatio:false,
+            maintainAspectRatio: false,
 
-        scales:{
-            y:{
-                beginAtZero:true
+            plugins: {
+
+                legend: {
+                    display: false
+                }
+
+            },
+
+            scales: {
+
+                y: {
+                    beginAtZero: true
+                }
+
             }
+
         }
 
-    }
-
-});
+    });
 
 </script>
 @endif
@@ -675,9 +714,17 @@ new Chart(document.getElementById('trendChart'), {
 
             data: {!! json_encode($trend_data) !!},
 
-            tension:0.3,
+            borderColor: '#38bdf8',
 
-            fill:false
+            pointBackgroundColor: '#38bdf8',
+
+            pointRadius: 4,
+
+            pointHoverRadius: 6,
+
+            tension: 0.3,
+
+            fill: false
 
         }]
 

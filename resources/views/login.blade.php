@@ -31,7 +31,7 @@
             background:#ffffff;
             padding:35px;
             border-radius:15px;
-            box-shadow:0 15px 35px rgba(0,0,0,0.25);
+            box-shadow:0 15px 35px rgba(0,0,0,.25);
         }
 
         .title{
@@ -49,18 +49,18 @@
             font-size:14px;
         }
 
-        .alert-error{
-            background:#ef4444;
-            color:white;
+        .alert-success{
+            background:#22c55e;
+            color:#fff;
             padding:12px;
             border-radius:8px;
             margin-bottom:15px;
             text-align:center;
         }
 
-        .alert-success{
-            background:#22c55e;
-            color:white;
+        .alert-error{
+            background:#ef4444;
+            color:#fff;
             padding:12px;
             border-radius:8px;
             margin-bottom:15px;
@@ -85,11 +85,12 @@
             border:1px solid #cbd5e1;
             border-radius:8px;
             outline:none;
+            transition:.2s;
         }
 
         .form-group input:focus{
             border-color:#38bdf8;
-            box-shadow:0 0 5px rgba(56,189,248,0.3);
+            box-shadow:0 0 5px rgba(56,189,248,.3);
         }
 
         button{
@@ -98,14 +99,16 @@
             border:none;
             border-radius:8px;
             cursor:pointer;
-            color:white;
+            color:#fff;
             font-size:15px;
             font-weight:600;
             background:linear-gradient(135deg,#38bdf8,#6366f1);
+            transition:.2s;
         }
 
         button:hover{
-            opacity:0.9;
+            opacity:.9;
+            transform:translateY(-2px);
         }
 
         .footer{
@@ -115,13 +118,16 @@
             color:#64748b;
         }
 
-        @media(max-width:480px){
+        @media (max-width:480px){
+
             .login-box{
                 padding:25px;
             }
+
         }
 
     </style>
+
 </head>
 <body>
 
@@ -144,12 +150,15 @@
         </div>
     @endif
 
-    <form method="POST" action="/login">
+    <form method="POST" action="{{ url('/login') }}">
+
         @csrf
 
         <div class="form-group">
-            <label>Username</label>
+            <label for="username">Username</label>
+
             <input
+                id="username"
                 type="text"
                 name="username"
                 value="{{ old('username') }}"
@@ -159,8 +168,10 @@
         </div>
 
         <div class="form-group">
-            <label>Password</label>
+            <label for="password">Password</label>
+
             <input
+                id="password"
                 type="password"
                 name="password"
                 placeholder="Masukkan password"
@@ -182,37 +193,31 @@
 
 <script>
 
-// ALERT SUCCESS HILANG OTOMATIS
-setTimeout(function(){
+function hideAlert(id){
 
-    let success = document.getElementById('success-alert');
+    const alertBox = document.getElementById(id);
 
-    if(success){
-        success.style.transition = "0.5s";
-        success.style.opacity = "0";
+    if(alertBox){
 
-        setTimeout(() => {
-            success.remove();
-        }, 500);
+        setTimeout(function(){
+
+            alertBox.style.transition = "0.5s";
+            alertBox.style.opacity = "0";
+
+            setTimeout(function(){
+
+                alertBox.remove();
+
+            },500);
+
+        },3000);
+
     }
 
-},3000);
+}
 
-// ALERT ERROR HILANG OTOMATIS
-setTimeout(function(){
-
-    let error = document.getElementById('error-alert');
-
-    if(error){
-        error.style.transition = "0.5s";
-        error.style.opacity = "0";
-
-        setTimeout(() => {
-            error.remove();
-        }, 500);
-    }
-
-},3000);
+hideAlert('success-alert');
+hideAlert('error-alert');
 
 </script>
 
