@@ -5,6 +5,9 @@ import os
 import numpy as np
 import pandas as pd
 import joblib
+import sys
+import traceback
+import holidays
 
 # ==============================
 # INIT APP
@@ -203,6 +206,13 @@ def produk():
 @app.route('/predict', methods=['POST'])
 def predict():
 
+    
+
+    print("=" * 50)
+    print("Python :", sys.executable)
+    print("Holidays :", holidays.__file__)
+    print("=" * 50)
+
     try:
 
         # ==============================
@@ -341,13 +351,13 @@ def predict():
         # ==============================
         # HARI LIBUR
         # ==============================
-        import holidays
 
-        id_holidays = holidays.Indonesia()
-
-        is_holiday = int(
-            tanggal in id_holidays
-        )
+        try:
+            id_holidays = holidays.Indonesia()
+            is_holiday = int(tanggal in id_holidays)
+        except Exception as e:
+            print("IMPORT HOLIDAYS ERROR:", repr(e))
+            raise
 
         # ==============================
         # LAG FEATURE
@@ -633,8 +643,9 @@ def predict():
 
     except Exception as e:
 
-        print("\n❌ ERROR:")
-        print(str(e))
+        print("\n========== ERROR ==========")
+        traceback.print_exc()
+        print("===========================")
 
         return jsonify({
 
