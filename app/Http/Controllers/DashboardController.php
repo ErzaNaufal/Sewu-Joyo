@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 use App\Exports\LaporanExport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -57,6 +58,8 @@ private const API_URL = 'http://127.0.0.1:5000';
             // AMBIL REKAP PENJUALAN HARIAN
             // ==============================
             $filtered = $this->getRekapPenjualan($produk);
+
+            $satuan = $this->getSatuanProduk($produk);
 
             $count = count($filtered);
 
@@ -166,6 +169,56 @@ private const API_URL = 'http://127.0.0.1:5000';
 
             $prediksi = (float) $json['prediksi'];
 
+            // ===================================
+            // PENYESUAIAN MENJELANG HARI LIBUR
+            // ===================================
+
+            $holidayBoost = 0;
+            $holidayName = '-';
+            $daysBeforeHoliday = null;
+
+            // tanggal yang dipilih user
+            $tanggalPrediksi = Carbon::today();
+
+            // daftar hari libur nasional
+            $holidays = [
+                '2027-03-28' => 'Idul Fitri',
+                '2027-12-25' => 'Natal',
+                '2027-01-01' => 'Tahun Baru',
+            ];
+
+            // cek H-7 s/d Hari H
+            foreach ($holidays as $tgl => $nama) {
+
+                $selisih = $tanggalPrediksi->diffInDays(
+                    Carbon::parse($tgl),
+                    false
+                );
+
+                if ($selisih >= 0 && $selisih <= 7) {
+
+                    $holidayName = $nama;
+                    $daysBeforeHoliday = $selisih;
+
+                    if ($selisih == 0) {
+                        $holidayBoost = 30;
+                    } elseif ($selisih <= 3) {
+                        $holidayBoost = 20;
+                    } else {
+                        $holidayBoost = 10;
+                    }
+
+                    break;
+                }
+            }
+
+            $prediksiAwal = round($prediksi);
+
+            $prediksiAkhir = round(
+                $prediksiAwal +
+                ($prediksiAwal * $holidayBoost / 100)
+            );
+
             // ==============================
             // STOK SAAT INI
             // ==============================
@@ -202,7 +255,8 @@ private const API_URL = 'http://127.0.0.1:5000';
                 'stok' => $stok,
                 'prediksi' => round($prediksi),
                 'status' => $status,
-                'rekomendasi' => $rekomendasi
+                'rekomendasi' => $rekomendasi,
+                'satuan' => $satuan,
 
             ];
 
@@ -246,7 +300,8 @@ private const API_URL = 'http://127.0.0.1:5000';
 
                         'tanggal'  => $data[0],
                         'produk'   => strtolower(trim($data[1])),
-                        'prediksi' => (float)$data[2]
+                        'prediksi' => (float)$data[2],
+                        'satuan'   => $data[3] ?? '-'
 
                     ];
 
@@ -279,7 +334,7 @@ private const API_URL = 'http://127.0.0.1:5000';
 
                 $data = str_getcsv($row);
 
-                if (count($data) >= 3) {
+                if (count($data) >= 4) {
 
                     $penjualan[] = [
 
@@ -292,7 +347,9 @@ private const API_URL = 'http://127.0.0.1:5000';
                             trim($data[1])
                         ),
 
-                        'jumlah' => (float)$data[2]
+                        'jumlah' => (float) $data[2],
+
+                        'satuan' => trim($data[3])
 
                     ];
 
@@ -423,7 +480,8 @@ private const API_URL = 'http://127.0.0.1:5000';
                     $history[] = [
                         'tanggal'  => $data[0],
                         'produk'   => $data[1],
-                        'prediksi' => (float) $data[2]
+                        'prediksi' => (float) $data[2],
+                        'satuan' => $data[3] ?? '-'
                     ];
 
                 }
@@ -509,7 +567,48 @@ private const API_URL = 'http://127.0.0.1:5000';
             // AMBIL REKAP PENJUALAN HARIAN
             // ==============================
 
+          $history_penjualan = $this->getRekapPenjualan($produk);
+
+            $satuan = $this->getSatuanProduk($produk);
+
+            // Cek apakah produk memiliki histori penjualan
+            if (empty($history_penjualan)) {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->with(
+                        'error',
+                        'Produk belum memiliki data histori penjualan. Silakan input data penjualan terlebih dahulu sebelum melakukan prediksi.'
+                    );
+            }
+
             $history_penjualan = $this->getRekapPenjualan($produk);
+
+            $history_penjualan = $this->getRekapPenjualan($produk);
+
+$satuan = $this->getSatuanProduk($produk);
+
+            // Cek apakah produk memiliki histori penjualan
+            if (empty($history_penjualan)) {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->with(
+                        'error',
+                        'Produk belum memiliki data histori penjualan. Silakan input data penjualan terlebih dahulu sebelum melakukan prediksi.'
+                    );
+            }
+
+            // Cek apakah produk memiliki histori penjualan
+            if (empty($history_penjualan)) {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->with(
+                        'error',
+                        'Produk belum memiliki data histori penjualan. Silakan input data penjualan terlebih dahulu sebelum melakukan prediksi.'
+                    );
+            }
 
             // ==============================
             // FEATURE ENGINEERING
@@ -608,19 +707,163 @@ private const API_URL = 'http://127.0.0.1:5000';
 
             if (!$response->successful()) {
 
-                dd([
-                    'status' => $response->status(),
-                    'body'   => $response->body(),
-                    'json'   => $response->json(),
-                ]);
+            dd([
+                'status' => $response->status(),
+                'body'   => $response->body(),
+                'json'   => $response->json(),
+            ]);
 
-            }
+        }
 
-            $hasil = $response->json();
+        $hasil = $response->json();
+        $hasil['satuan'] = $this->getSatuanProduk($produk);
            
             if (!isset($hasil['prediksi'])) {
                 return back()->with('error', 'Response model tidak valid');
             }
+
+            // =====================================================
+            // BUSINESS RULE HARI LIBUR NASIONAL
+            // =====================================================
+
+            $tanggalPrediksi = Carbon::parse($request->tanggal);
+
+            $holidayName = '-';
+            $holidayBoost = 0;
+            $daysBeforeHoliday = null;
+
+            $holidayList = [
+
+            // ==========================
+            // Hari Libur Tetap
+            // ==========================
+            '2026-01-01' => [
+                'name' => 'Tahun Baru',
+                'boost' => 20
+            ],
+
+            '2026-05-01' => [
+                'name' => 'Hari Buruh',
+                'boost' => 5
+            ],
+
+            '2026-06-01' => [
+                'name' => 'Hari Lahir Pancasila',
+                'boost' => 5
+            ],
+
+            '2026-08-17' => [
+                'name' => 'Hari Kemerdekaan RI',
+                'boost' => 10
+            ],
+
+            '2026-12-25' => [
+                'name' => 'Natal',
+                'boost' => 20
+            ],
+
+            // ==========================
+            // Hari Libur Tidak Tetap (2026)
+            // ==========================
+            '2026-01-16' => [
+                'name' => 'Isra Mi\'raj',
+                'boost' => 10
+            ],
+
+            '2026-02-17' => [
+                'name' => 'Idul Fitri',
+                'boost' => 30
+            ],
+
+            '2026-02-18' => [
+                'name' => 'Idul Fitri',
+                'boost' => 30
+            ],
+
+            '2026-03-19' => [
+                'name' => 'Nyepi',
+                'boost' => 10
+            ],
+
+            '2026-03-20' => [
+                'name' => 'Imlek',
+                'boost' => 10
+            ],
+
+            '2026-05-14' => [
+                'name' => 'Kenaikan Isa Almasih',
+                'boost' => 10
+            ],
+
+            '2026-05-24' => [
+                'name' => 'Waisak',
+                'boost' => 10
+            ],
+
+            '2026-05-27' => [
+                'name' => 'Idul Adha',
+                'boost' => 20
+            ],
+
+            '2026-06-16' => [
+            'name' => 'Tahun Baru Islam',
+            'boost' => 10
+            ],
+
+        '2026-08-26' => [
+            'name' => 'Maulid Nabi Muhammad SAW',
+            'boost' => 10
+            ],
+
+        ];
+
+            foreach ($holidayList as $tanggal => $item) {
+
+                $libur = Carbon::parse($tanggal);
+
+                $selisih = $tanggalPrediksi->diffInDays($libur,false);
+
+                if($selisih >=0 && $selisih <=7){
+
+                    $holidayName = $item['name'];
+
+                    $daysBeforeHoliday = $selisih;
+
+                    if($selisih==0){
+
+                        $holidayBoost = round($item['boost']*1.2);
+
+                    }elseif($selisih<=3){
+
+                        $holidayBoost = $item['boost'];
+
+                    }else{
+
+                        $holidayBoost = round($item['boost']*0.5);
+
+                    }
+
+                    break;
+                }
+
+            }
+
+            $prediksiModel = round($hasil['prediksi']);
+
+            $penyesuaian = round(
+                $prediksiModel * $holidayBoost / 100
+            );
+
+            $rekomendasiStok = $prediksiModel + $penyesuaian;
+
+            // simpan ke hasil
+            $hasil['prediksi_model'] = $prediksiModel;
+            $hasil['holiday_name'] = $holidayName;
+            $hasil['days_before_holiday'] = $daysBeforeHoliday;
+            $hasil['holiday_boost'] = $holidayBoost;
+            $hasil['penyesuaian'] = $penyesuaian;
+            $hasil['rekomendasi_stok'] = $rekomendasiStok;
+            $hasil['satuan'] = $satuan;
 
             // ==============================
             // SIMPAN HISTORY KE CSV
@@ -630,7 +873,7 @@ private const API_URL = 'http://127.0.0.1:5000';
 
                 Storage::put(
                     'prediksi_history.csv',
-                    "tanggal,produk,prediksi\n"
+                    "tanggal,produk,prediksi,satuan\n"
                 );
             }
 
@@ -639,7 +882,8 @@ private const API_URL = 'http://127.0.0.1:5000';
                 implode(',', [
                     $request->tanggal,
                     $hasil['produk'],
-                    round($hasil['prediksi'])
+                    $hasil['rekomendasi_stok'],
+                    $hasil['satuan']
                 ])
             );
 
@@ -665,7 +909,8 @@ private const API_URL = 'http://127.0.0.1:5000';
                 $history[] = [
                     'tanggal'  => $data[0],
                     'produk'   => $data[1],
-                    'prediksi' => (float) $data[2]
+                    'prediksi' => (float) $data[2],
+                    'satuan'   => $data[3] ?? '-'
                 ];
             }
 
@@ -704,6 +949,7 @@ private const API_URL = 'http://127.0.0.1:5000';
 
             }
 
+            
             return view('prediksi', [
 
                 'hasil'        => $hasil,
@@ -777,7 +1023,9 @@ private const API_URL = 'http://127.0.0.1:5000';
 
                         'produk' => $namaProduk,
 
-                        'total' => 0
+                        'total'   => 0,
+
+                        'satuan'  => $data[3] ?? '-'
 
                     ];
 
@@ -832,12 +1080,13 @@ private const API_URL = 'http://127.0.0.1:5000';
 
                     $data = str_getcsv($row);
 
-                    if (count($data) >= 3) {
+                    if (count($data) >= 4) {
 
                         $penjualan[] = [
                             'tanggal' => date('Y-m-d', strtotime($data[0])),
                             'produk'  => strtolower(trim($data[1])),
-                            'jumlah'  => (float) $data[2]
+                            'jumlah'  => (float) $data[2],
+                            'satuan'  => trim($data[3])
                         ];
                     }
                 }
@@ -909,8 +1158,8 @@ private const API_URL = 'http://127.0.0.1:5000';
     {
         $request->validate([
             'tanggal' => 'required|date',
-            'produk' => 'required',
-            'jumlah' => 'required|numeric|min:1'
+            'produk'  => 'required',
+            'jumlah'  => 'required|numeric|min:1',
         ]);
 
         $path = 'histori_penjualan.csv';
@@ -920,7 +1169,7 @@ private const API_URL = 'http://127.0.0.1:5000';
 
             Storage::put(
                 $path,
-                "tanggal,produk,jumlah\n"
+                "tanggal,produk,jumlah,satuan\n"
             );
 
         }
@@ -932,7 +1181,9 @@ private const API_URL = 'http://127.0.0.1:5000';
 
             trim($request->produk),
 
-            (int)$request->jumlah
+            (int) $request->jumlah,
+
+            $this->getSatuanProduk($request->produk)
 
         ]);
 
@@ -1006,5 +1257,52 @@ private const API_URL = 'http://127.0.0.1:5000';
             'laporan_stok.xlsx'
 
         );
+    }
+
+        private function getSatuanProduk($produk)
+    {
+        $mapping = [
+            'bakso' => 'Pack',
+            'cakwe' => 'Pack',
+            'tahu putih' => 'Pack',
+            'tempe' => 'Pack',
+            'jamur' => 'Pack',
+
+            'kentang' => 'Kg',
+            'wortel' => 'Kg',
+            'bawang merah' => 'Kg',
+            'bawang merah giling' => 'Kg',
+            'bawang putih' => 'Kg',
+            'bawang putih giling' => 'Kg',
+            'cabai merah besar' => 'Kg',
+            'rawit merah' => 'Kg',
+            'rawit hijau' => 'Kg',
+            'kol' => 'Kg',
+            'kembang kol' => 'Kg',
+            'brokoli' => 'Kg',
+            'buncis' => 'Kg',
+            'tomat merah' => 'Kg',
+            'tomat hijau' => 'Kg',
+            'bayam' => 'Kg',
+            'pakcoy' => 'Kg',
+            'sawi hijau' => 'Kg',
+            'sawi putih' => 'Kg',
+            'selada' => 'Kg',
+            'seledri' => 'Kg',
+            'serai' => 'Kg',
+            'tauge' => 'Kg',
+            'kacang panjang' => 'Kg',
+            'kacang hijau' => 'Kg',
+            'jagung muda' => 'Kg',
+            'jeruk nipis' => 'Kg',
+            'singkong' => 'Kg',
+            'labu' => 'Kg',
+
+            'daun pisang' => 'Lembar',
+        ];
+
+        $produk = strtolower(trim($produk));
+
+        return $mapping[$produk] ?? 'Pack';
     }
 }

@@ -84,7 +84,12 @@ $prioritas = collect($data ?? [])->where('status','Understock')->take(5);
         <h3>🚨 Prioritas</h3>
         <ul class="list">
             @forelse($prioritas as $p)
-            <li>⚠️ {{ $p['produk'] }} ({{ $p['stok'] }} → {{ round($p['prediksi']) }})</li>
+            <li>
+                ⚠️ {{ $p['produk'] }}
+                ({{ $p['stok'] }} {{ $p['satuan'] }}
+                →
+                {{ round($p['prediksi']) }} {{ $p['satuan'] }})
+                </li>
             @empty
             <li>Tidak ada prioritas</li>
             @endforelse
@@ -99,14 +104,16 @@ $prioritas = collect($data ?? [])->where('status','Understock')->take(5);
         🔥 Prediksi Tertinggi
         <br>
         <b>{{ $max['produk'] ?? '-' }}</b>
-        ({{ $max ? round($max['prediksi']) : 0 }} pcs)
+        ({{ $max ? round($max['prediksi']) : 0 }}
+        {{ $max['satuan'] ?? '' }})
         </li>
 
         <li>
         📉 Prediksi Terendah
         <br>
         <b>{{ $min['produk'] ?? '-' }}</b>
-        ({{ $min ? round($min['prediksi']) : 0 }} pcs)
+        ({{ $min ? round($min['prediksi']) : 0 }}
+        {{ $min['satuan'] ?? '' }})
         </li>
 
         </ul>
@@ -164,19 +171,19 @@ $prioritas = collect($data ?? [])->where('status','Understock')->take(5);
 <tr>
 <td>{{ $i+1 }}</td>
 <td class="left">{{ $d['produk'] }}</td>
-<td>{{ $d['stok'] }}</td>
-<td>{{ round($d['prediksi']) }}</td>
+<td>{{ $d['stok'] }} {{ $d['satuan'] }}</td>
+<td>{{ round($d['prediksi']) }} {{ $d['satuan'] }}</td>
 <td>
     @php
         $selisih = $d['stok'] - round($d['prediksi']);
     @endphp
 
     @if($selisih > 0)
-        +{{ $selisih }}
+        +{{ $selisih }} {{ $d['satuan'] }}
     @elseif($selisih < 0)
-        {{ $selisih }}
+        {{ $selisih }} {{ $d['satuan'] }}
     @else
-        0
+        0 {{ $d['satuan'] }}
     @endif
 </td>
 

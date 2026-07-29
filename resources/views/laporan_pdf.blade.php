@@ -239,6 +239,8 @@ penjualan terbaru yang tersedia pada sistem.
 
 <th>Prediksi</th>
 
+<th>Selisih</th>
+
 <th>Status</th>
 
 <th>Keterangan</th>
@@ -255,9 +257,23 @@ penjualan terbaru yang tersedia pada sistem.
 
 <td class="left">{{ $d['produk'] }}</td>
 
-<td>{{ $d['stok'] }}</td>
+<td>{{ $d['stok'] }}{{ $d['satuan'] != '-' ? ' '.$d['satuan'] : '' }}</td>
 
-<td>{{ round($d['prediksi']) }}</td>
+<td>{{ round($d['prediksi']) }}{{ $d['satuan'] != '-' ? ' '.$d['satuan'] : '' }}</td>
+
+@php
+    $selisih = $d['stok'] - round($d['prediksi']);
+@endphp
+
+<td>
+@if($selisih > 0)
+    +{{ $selisih }}{{ $d['satuan'] != '-' ? ' '.$d['satuan'] : '' }}
+@elseif($selisih < 0)
+    {{ $selisih }}{{ $d['satuan'] != '-' ? ' '.$d['satuan'] : '' }}
+@else
+    0{{ $d['satuan'] != '-' ? ' '.$d['satuan'] : '' }}
+@endif
+</td>
 
 <td>{{ $d['status'] }}</td>
 

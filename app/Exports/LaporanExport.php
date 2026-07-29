@@ -22,12 +22,31 @@ class LaporanExport implements FromCollection, WithHeadings, ShouldAutoSize, Wit
     {
         return $this->data->map(function ($item) {
 
+            $satuan = ($item['satuan'] ?? '-') != '-'
+                ? ' ' . $item['satuan']
+                : '';
+
+            $selisih = $item['stok'] - round($item['prediksi']);
+
+            $selisihText = ($selisih > 0 ? '+' : '') . $selisih . $satuan;
+
             return [
-                'Produk'      => $item['produk'],
-                'Stok'        => $item['stok'],
-                'Prediksi'    => round($item['prediksi']),
-                'Status'      => $item['status'],
-                'Rekomendasi' => $item['rekomendasi'],
+                'Produk' => $item['produk'],
+
+                'Stok Saat Ini' =>
+                    $item['stok'] . $satuan,
+
+                'Prediksi' =>
+                    round($item['prediksi']) . $satuan,
+
+                'Selisih' =>
+                    $selisihText,
+
+                'Status' =>
+                    $item['status'],
+
+                'Rekomendasi' =>
+                    $item['rekomendasi'],
             ];
         });
     }
@@ -38,6 +57,7 @@ class LaporanExport implements FromCollection, WithHeadings, ShouldAutoSize, Wit
             'Produk',
             'Stok Saat Ini',
             'Prediksi',
+            'Selisih',
             'Status',
             'Rekomendasi'
         ];
@@ -48,9 +68,9 @@ class LaporanExport implements FromCollection, WithHeadings, ShouldAutoSize, Wit
         return [
             1 => [
                 'font' => [
-                    'bold' => true
-                ]
-            ]
+                    'bold' => true,
+                ],
+            ],
         ];
     }
 }

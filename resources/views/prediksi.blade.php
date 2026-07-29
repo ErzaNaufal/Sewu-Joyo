@@ -37,6 +37,58 @@
 }
 
 /* =========================
+    FORM INPUT
+========================= */
+
+.form-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:20px;
+    align-items:start;
+}
+
+.form-group{
+    display:flex;
+    flex-direction:column;
+}
+
+.form-group label{
+    display:block;
+    margin-bottom:10px;
+    font-size:16px;
+    font-weight:600;
+    color:#ffffff;
+    line-height:1.4;
+}
+
+.form-group input,
+.form-group select{
+    width:100%;
+    height:48px;
+    padding:0 14px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,.15);
+    background:#0b1120;
+    color:#ffffff;
+    font-size:15px;
+    outline:none;
+    box-sizing:border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus{
+    border-color:#38bdf8;
+}
+
+@media(max-width:768px){
+
+    .form-grid{
+        grid-template-columns:1fr;
+    }
+
+}
+
+/* =========================
     CARD
 ========================= */
 .stat-card{
@@ -323,22 +375,23 @@ color:white;
             {{-- PRODUK --}}
             <div class="form-group">
 
-                <label>Produk</label>
+                <label for="produk">
+                    Produk
+                </label>
 
-                <select name="produk" required>
+                <select
+                    id="produk"
+                    name="produk"
+                    required>
 
-                    <option value="">
-                        -- Pilih Produk --
-                    </option>
+                    <option value="">-- Pilih Produk --</option>
 
                     @foreach($produk as $p)
-
-                    <option
-                        value="{{ $p }}"
-                        {{ old('produk') == $p ? 'selected' : '' }}>
-                        {{ $p }}
-                    </option>
-
+                        <option
+                            value="{{ $p }}"
+                            {{ old('produk') == $p ? 'selected' : '' }}>
+                            {{ ucfirst($p) }}
+                        </option>
                     @endforeach
 
                 </select>
@@ -348,21 +401,20 @@ color:white;
             {{-- TANGGAL --}}
             <div class="form-group">
 
-                <label>Tanggal Prediksi</label>
+                <label for="tanggal">
+                    Tanggal Prediksi
+                </label>
 
                 <input
+                    id="tanggal"
                     type="date"
                     name="tanggal"
                     value="{{ old('tanggal') }}"
-                    required
-                >
+                    required>
 
             </div>
 
-            {{-- PENJUALAN --}}
-
         </div>
-
         <br>
 
         <button type="submit">
@@ -401,45 +453,76 @@ color:white;
             <h3>📊 Hasil Prediksi</h3>
 
             @if(isset($hasil))
-            
+
                 <h2 style="margin-top:10px;">
                     📦 {{ $hasil['produk'] }}
                 </h2>
 
                 <div class="prediksi-value">
-                    {{ round($hasil['prediksi']) }}
+                    {{ $hasil['prediksi_model'] }} {{ $hasil['satuan'] }}
                 </div>
 
-                <p style="opacity:0.7;">
-                    Prediksi kebutuhan stok
+                <p style="opacity:.7;">
+                    Rekomendasi Stok
                 </p>
 
                 @php
-                    $safe = round($hasil['prediksi'] * 0.2);
-                    $total = round($hasil['prediksi'] + $safe);
+                    $safe = round($hasil['prediksi_model'] * 0.2);
+                    $total = $hasil['rekomendasi_stok'];
                 @endphp
 
                 <div class="summary-box">
 
                     <div>
-                        Prediksi:
-                        <b>
-                            {{ round($hasil['prediksi']) }}
-                        </b>
+                        Prediksi Model
+                        <b>{{ $hasil['prediksi_model'] }} {{ $hasil['satuan'] }}</b>
                     </div>
 
                     <div>
-                        Safety Stock:
-                        <b>
-                            {{ $safe }}
-                        </b>
+                        Hari Libur
+                        <b>{{ $hasil['holiday_name'] }}</b>
                     </div>
 
                     <div>
-                        Total Rekomendasi:
+                        Posisi
+
                         <b>
-                            {{ $total }}
+                            @if(!is_null($hasil['days_before_holiday']))
+                                H-{{ $hasil['days_before_holiday'] }}
+                            @else
+                                -
+                            @endif
                         </b>
+
+                    </div>
+
+                    <div>
+                        Holiday Boost
+                        <b>+{{ $hasil['holiday_boost'] }}%</b>
+                    </div>
+
+                    <div>
+                        Penyesuaian
+                        <b>+{{ $hasil['penyesuaian'] }} {{ $hasil['satuan'] }}</b>
+                    </div>
+
+                    <div>
+                        Safety Stock
+                        <b>{{ $safe }} {{ $hasil['satuan'] }}</b>
+                    </div>
+
+                    <hr style="margin:12px 0;opacity:.2;">
+
+                    <div style="font-size:18px;">
+
+                        <b>Rekomendasi Stok</b>
+
+                        <div style="margin-top:8px;font-size:28px;color:#38bdf8;">
+
+                            {{ $hasil['rekomendasi_stok'] }} {{ $hasil['satuan'] }}
+
+                        </div>
+
                     </div>
 
                 </div>
@@ -462,6 +545,150 @@ color:white;
                     📌 {{ $hasil['rekomendasi'] }}
 
                 </div>
+
+                @if(isset($hasil['fitur']))
+
+                <div class="card" style="margin-top:20px; text-align:left;">
+
+                    <h4>🧮 Detail Perhitungan Prediksi</h4>
+                    <hr style="opacity:.2; margin:12px 0;">
+
+                    <table class="table">
+
+                        <tr>
+                            <td>Lag-1 (Penjualan H-1)</td>
+                            <td><b>{{ $hasil['fitur']['lag1'] ?? '-' }}</b></td>
+                        </tr>
+
+                        <tr>
+                            <td>Lag-2 (Penjualan H-2)</td>
+                            <td><b>{{ $hasil['fitur']['lag2'] ?? '-' }}</b></td>
+                        </tr>
+
+                        <tr>
+                            <td>Lag-3 (Penjualan H-3)</td>
+                            <td><b>{{ $hasil['fitur']['lag3'] ?? '-' }}</b></td>
+                        </tr>
+
+                        <tr>
+                            <td>Trend Penjualan</td>
+                            <td><b>{{ $hasil['fitur']['diff_1'] ?? '-' }}</b></td>
+                        </tr>
+
+                        <tr>
+                            <td>Weekend</td>
+                            <td>
+                                <b>{{ ($hasil['fitur']['weekend'] ?? 0) ? 'Ya' : 'Tidak' }}</b>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td>Hari Libur</td>
+                            <td>
+                                <b>{{ ($hasil['fitur']['holiday'] ?? 0) ? 'Ya' : 'Tidak' }}</b>
+                            </td>
+                        </tr>
+
+                    </table>
+
+                    <hr style="margin:18px 0; opacity:.2;">
+
+                    <h5>📌 Proses Perhitungan</h5>
+
+                    <table class="table">
+
+                        <tr>
+                            <td style="width:40%;"><b>Langkah 1</b></td>
+                            <td>
+                                Sistem membaca nilai fitur
+                                <b>Lag-1</b>, <b>Lag-2</b>, <b>Lag-3</b>,
+                                <b>Trend</b>, <b>Weekend</b>, dan
+                                <b>Hari Libur</b>.
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td><b>Langkah 2</b></td>
+                            <td>
+                                Seluruh fitur digunakan sebagai input ke model
+                                <b>Random Forest Regressor</b>.
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td><b>Langkah 3</b></td>
+                            <td>
+                                Model melakukan prediksi menggunakan banyak
+                                <b>Decision Tree</b>.
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td><b>Langkah 4</b></td>
+                            <td>
+                                Seluruh hasil prediksi dari setiap Decision Tree
+                                digabungkan menggunakan metode
+                                <b>Average (Rata-rata)</b>.
+                            </td>
+                        </tr>
+
+                        <tr style="border-top:2px solid rgba(255,255,255,.2);">
+                            <td><b>Output Prediksi</b></td>
+                            <td>
+                                <span style="font-size:18px;color:#38bdf8;font-weight:bold;">
+                                    {{ $hasil['prediksi_model'] }} {{ $hasil['satuan'] }}
+                                </span>
+                            </td>
+                        </tr>
+
+
+                        <tr>
+                            <td>Hari Libur</td>
+                            <td><b>{{ $hasil['holiday_name'] }}</b></td>
+                        </tr>
+
+                        <tr>
+                            <td>Posisi</td>
+                            <td>
+                                @if(!is_null($hasil['days_before_holiday']))
+                                    H-{{ $hasil['days_before_holiday'] }}
+                                @else
+                                    -
+                                @endif
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td>Holiday Boost</td>
+                            <td><b>+{{ $hasil['holiday_boost'] }}%</b></td>
+                        </tr>
+
+                        <tr>
+                            <td>Penyesuaian</td>
+                            <td><b>+{{ $hasil['penyesuaian'] }} {{ $hasil['satuan'] }}</b></td>
+                        </tr>
+
+                        <tr style="border-top:2px solid rgba(255,255,255,.2);">
+                            <td><b>Rekomendasi Stok</b></td>
+                            <td>
+                                <span style="font-size:18px;color:#38bdf8;font-weight:bold;">
+                                    {{ $hasil['rekomendasi_stok'] }} {{ $hasil['satuan'] }}
+                                </span>
+                            </td>
+                        </tr>
+                        
+                    </table>
+
+                    <div style="margin-top:15px;padding:12px;border-radius:8px;background:rgba(56,189,248,.08);line-height:1.8;font-size:14px;">
+                        <b>Keterangan:</b><br>
+                        Random Forest tidak menghasilkan satu persamaan matematis seperti regresi linear.
+                        Prediksi diperoleh dari hasil penggabungan (<b>Average</b>) prediksi yang dihasilkan oleh banyak
+                        <b>Decision Tree</b> berdasarkan nilai fitur yang dimasukkan ke dalam model.
+                    </div>
+
+                </div>
+
+                @endif
 
                 {{-- FEATURE ENGINEERING --}}
                 @if(isset($hasil['fitur']))
@@ -551,7 +778,7 @@ color:white;
 ======================= --}}
 <div class="card" style="margin-top:20px;">
 
-    <h3>📈 Tren Prediksi</h3>
+    <h3>📈 Grafik Prediksi Stok</h3>
 
     @if(!empty($trend_labels))
 
@@ -583,7 +810,7 @@ color:white;
         <thead>
 
             <tr>
-                <th>Tanggal</th>
+                <th>Tanggal Prediksi</th>
                 <th>Produk</th>
                 <th>Prediksi</th>
             </tr>
@@ -603,7 +830,7 @@ color:white;
                 </td>
 
                 <td>
-                    {{ round($h['prediksi']) }}
+                    {{ round($h['prediksi']) }} {{ $h['satuan'] }}
                 </td>
 
             </tr>
@@ -640,9 +867,9 @@ new Chart(document.getElementById('chart'), {
 
         labels: [
 
-            'Prediksi',
+            'Prediksi Model',
             'Safety Stock',
-            'Total'
+            'Rekomendasi Stok'
 
         ],
 
@@ -652,7 +879,7 @@ new Chart(document.getElementById('chart'), {
 
             data: [
 
-                {{ round($hasil['prediksi']) }},
+                {{ $hasil['prediksi_model'] }},
 
                 {{ $safe }},
 

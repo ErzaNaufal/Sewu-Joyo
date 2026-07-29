@@ -90,7 +90,6 @@
 
             {{-- TANGGAL --}}
             <div class="form-group">
-
                 <label>Tanggal Penjualan</label>
 
                 <input
@@ -98,36 +97,26 @@
                     name="tanggal"
                     value="{{ old('tanggal', date('Y-m-d')) }}"
                     required>
-
             </div>
 
             {{-- PRODUK --}}
             <div class="form-group">
-
                 <label>Produk</label>
 
                 <select name="produk" required>
-
                     <option value="">-- Pilih Produk --</option>
 
                     @foreach($produk as $p)
-
                         <option value="{{ $p }}"
                             {{ old('produk') == $p ? 'selected' : '' }}>
-
                             {{ $p }}
-
                         </option>
-
                     @endforeach
-
                 </select>
-
             </div>
 
-            {{-- JUMLAH --}}
+            {{-- JUMLAH TERJUAL --}}
             <div class="form-group">
-
                 <label>Jumlah Terjual</label>
 
                 <input
@@ -135,11 +124,13 @@
                     name="jumlah"
                     min="1"
                     value="{{ old('jumlah') }}"
+                    placeholder="Masukkan jumlah terjual"
                     required>
-
             </div>
 
+
         </div>
+
         <br>
 
         <button type="submit">
@@ -191,6 +182,7 @@
                     <th>Tanggal</th>
                     <th>Produk</th>
                     <th>Jumlah</th>
+                    <th>Satuan</th>
                 </tr>
 
             </thead>
@@ -210,6 +202,7 @@
                     <td class="left">{{ $p['produk'] }}</td>
 
                     <td>{{ $p['jumlah'] }}</td>
+                    <td>{{ $p['satuan'] ?? '-' }}</td>
 
                 </tr>
 
@@ -257,6 +250,7 @@
                     <th>Tanggal</th>
                     <th>Produk</th>
                     <th>Total Penjualan</th>
+                    <th>Satuan</th>
 
                 </tr>
 
@@ -275,6 +269,7 @@
                     <td class="left">{{ ucfirst($item['produk']) }}</td>
 
                     <td>{{ $item['total'] }}</td>
+                    <td>{{ $item['satuan'] ?? '-' }}</td>
 
                 </tr>
 
