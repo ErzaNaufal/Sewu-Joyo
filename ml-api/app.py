@@ -104,6 +104,24 @@ R2 = round(
     2
 )
 
+def holiday_impact_score(tanggal):
+        """
+        Menghasilkan skor pengaruh hari libur.
+        Menggunakan logika yang sama dengan notebook training.
+        """
+
+        id_holidays = holidays.Indonesia()
+
+        score = 0
+
+        for offset in range(-7, 8):
+            cek = tanggal + pd.Timedelta(days=offset)
+
+            if cek in id_holidays:
+                score += max(0, 8 - abs(offset))
+
+        return score
+
 # ==============================
 # REKOMENDASI
 # ==============================
@@ -355,6 +373,7 @@ def predict():
         try:
             id_holidays = holidays.Indonesia()
             is_holiday = int(tanggal in id_holidays)
+            holiday_score = holiday_impact_score(tanggal)
         except Exception as e:
             print("IMPORT HOLIDAYS ERROR:", repr(e))
             raise
@@ -486,6 +505,8 @@ def predict():
 
             "is_holiday": is_holiday,
 
+            "holiday_impact_score": holiday_score,
+
             "lag_1": lag_1,
 
             "lag_2": lag_2,
@@ -546,10 +567,19 @@ def predict():
         # ==============================
         # BOOST LIBUR
         # ==============================
-        if is_holiday == 1:
+        # Penyesuaian menjelang hari libur
 
-            hasil = hasil * 1.15
+        if holiday_score >= 14:
+            hasil *= 1.40
 
+        elif holiday_score >= 10:
+            hasil *= 1.30
+
+        elif holiday_score >= 6:
+            hasil *= 1.20
+
+        elif holiday_score >= 3:
+            hasil *= 1.10
         # ==============================
         # MINIMAL NILAI
         # ==============================
@@ -575,61 +605,70 @@ def predict():
 
             'success': True,
 
-            'produk':
-                produk,
+            'produk': produk,
 
-            'tanggal':
-                tanggal_str,
+            'tanggal': tanggal_str,
 
-            'prediksi':
-                round(
-                    hasil,
-                    2
-                ),
+            # HASIL AKHIR SETELAH PENYESUAIAN
+            'prediksi': round(hasil, 2),
 
-            'kategori':
-                kategori,
+            # HASIL ASLI RANDOM FOREST
+            'prediksi_random_forest': round(pred, 2),
 
-            'rekomendasi':
-                rekomendasi,
+            # HASIL SETELAH STABILISASI
+            'prediksi_setelah_stabilisasi': round(
+                (pred * 0.7) + (avg * 0.3),
+                2
+            ),
+
+            # BESAR BOOST YANG DIBERIKAN
+            'boost_persen': (
+                "40%" if holiday_score >= 14 else
+                "30%" if holiday_score >= 10 else
+                "20%" if holiday_score >= 6 else
+                "10%" if holiday_score >= 3 else
+                "0%"
+            ),
+
+            'kategori': kategori,
+
+            'rekomendasi': rekomendasi,
 
             'fitur': {
 
-                'hari':
-                    hari,
+                'hari': hari,
 
-                'bulan':
-                    bulan,
+                'bulan': bulan,
 
-                'minggu_bulan':
-                    minggu_bulan,
+                'minggu_bulan': minggu_bulan,
 
-                'weekend':
-                    is_weekend,
+                'weekend': is_weekend,
 
-                'holiday':
-                    is_holiday,
+                'holiday': is_holiday,
 
-                'lag1':
-                    lag_1,
+                'holiday_score': holiday_score,
 
-                'lag2':
-                    lag_2,
+                'lag1': lag_1,
 
-                'lag3':
-                    lag_3,
+                'lag2': lag_2,
 
-                'diff_1':
-                    diff_1,
+                'lag3': lag_3,
 
-                'mean_barang':
-                    round(mean_barang, 2),
+                'diff_1': diff_1,
 
-                'freq_barang':
-                    freq_barang,
+                'rolling_mean_7': round(rolling_mean_7, 2),
 
-                'barang_encoded':
-                    barang_encoded
+                'rolling_std_7': round(rolling_std_7, 2),
+
+                'rolling_max_7': round(rolling_max_7, 2),
+
+                'rolling_min_7': round(rolling_min_7, 2),
+
+                'mean_barang': round(mean_barang, 2),
+
+                'freq_barang': freq_barang,
+
+                'barang_encoded': barang_encoded
 
             },
 
@@ -654,7 +693,6 @@ def predict():
             'error': str(e)
 
         }), 500
-
 # ==============================
 # TEST API
 # ==============================
