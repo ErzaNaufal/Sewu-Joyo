@@ -269,6 +269,36 @@ body.dark .info-box{
     background:rgba(255,255,255,0.03);
 }
 
+/* =========================
+    FILTER GRAFIK TREND
+========================= */
+.trend-filter{
+    margin:15px 0 20px 0;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.trend-filter label{
+    font-weight:600;
+    color:#ffffff;
+}
+
+.trend-filter select{
+    padding:10px 14px;
+    border-radius:10px;
+    background:#0b1120;
+    color:#ffffff;
+    border:1px solid rgba(255,255,255,.15);
+    font-size:14px;
+    outline:none;
+}
+
+.trend-filter select:focus{
+    border-color:#38bdf8;
+}
+
 </style>
 
 <h1 style="margin-bottom:25px;">
@@ -774,13 +804,32 @@ color:white;
 </div>
 
 {{-- =======================
-    TREND
+    TREND (DENGAN FILTER PRODUK)
 ======================= --}}
 <div class="card" style="margin-top:20px;">
 
     <h3>📈 Grafik Prediksi Stok</h3>
 
     @if(!empty($trend_labels))
+
+        {{-- COMBOBOX FILTER PRODUK --}}
+        <div class="trend-filter">
+
+            <label for="filterTrendProduk">
+                Pilih Produk:
+            </label>
+
+            <select id="filterTrendProduk">
+
+                <option value="__all__">Semua Produk</option>
+
+                @foreach($produk as $p)
+                    <option value="{{ $p }}">{{ ucfirst($p) }}</option>
+                @endforeach
+
+            </select>
+
+        </div>
 
         <canvas id="trendChart"></canvas>
 
@@ -819,14 +868,14 @@ color:white;
 
         <tbody>
 
-            @foreach(array_reverse($history) as $h)
+            @foreach($history as $h)
 
             <tr>
 
                 <td>{{ $h['tanggal'] }}</td>
 
                 <td class="left">
-                    {{ $h['produk'] }}
+                    {{ ucfirst($h['produk']) }}
                 </td>
 
                 <td>
@@ -927,49 +976,100 @@ new Chart(document.getElementById('chart'), {
 @if(!empty($trend_labels))
 <script>
 
-new Chart(document.getElementById('trendChart'), {
+// ==============================
+// DATA TREND: GABUNGAN & PER PRODUK
+// ==============================
+const trendByProduk  = {!! json_encode($trendByProduk ?? []) !!};
+const trendLabelsAll = {!! json_encode($trend_labels) !!};
+const trendDataAll   = {!! json_encode($trend_data) !!};
 
-    type: 'line',
+let trendChart;
 
-    data: {
+function renderTrendChart(produkKey) {
 
-        labels: {!! json_encode($trend_labels) !!},
+    let labels, data, labelText;
 
-        datasets: [{
+    if (produkKey === '__all__') {
 
-            label: 'Trend Prediksi',
+        labels = trendLabelsAll;
+        data = trendDataAll;
+        labelText = 'Trend Prediksi (Semua Produk)';
 
-            data: {!! json_encode($trend_data) !!},
+    } else {
 
-            borderColor: '#38bdf8',
+        const d = trendByProduk[produkKey] || { labels: [], data: [] };
 
-            pointBackgroundColor: '#38bdf8',
-
-            pointRadius: 4,
-
-            pointHoverRadius: 6,
-
-            tension: 0.3,
-
-            fill: false
-
-        }]
-
-    },
-
-    options: {
-
-        responsive:true,
-
-        scales:{
-            y:{
-                beginAtZero:true
-            }
-        }
+        labels = d.labels;
+        data = d.data;
+        labelText = 'Trend Prediksi - '
+            + produkKey.charAt(0).toUpperCase()
+            + produkKey.slice(1);
 
     }
 
-});
+    if (labels.length === 0) {
+        labels = ['-'];
+        data = [0];
+    }
+
+    if (trendChart) {
+        trendChart.destroy();
+    }
+
+    trendChart = new Chart(document.getElementById('trendChart'), {
+
+        type: 'line',
+
+        data: {
+
+            labels: labels,
+
+            datasets: [{
+
+                label: labelText,
+
+                data: data,
+
+                borderColor: '#38bdf8',
+
+                pointBackgroundColor: '#38bdf8',
+
+                pointRadius: 4,
+
+                pointHoverRadius: 6,
+
+                tension: 0.3,
+
+                fill: false
+
+            }]
+
+        },
+
+        options: {
+
+            responsive: true,
+
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+
+        }
+
+    });
+
+}
+
+// Render pertama kali dengan "Semua Produk"
+renderTrendChart('__all__');
+
+// Update grafik saat combobox diganti
+document.getElementById('filterTrendProduk')
+    .addEventListener('change', function () {
+        renderTrendChart(this.value);
+    });
 
 </script>
 @endif
