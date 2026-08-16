@@ -548,38 +548,109 @@ def predict():
 
         print(f"\nPrediksi Random Forest : {pred}")
 
+        # ==============================
+        # TREND-AWARE STABILISASI
+        # ==============================
+        # Rata-rata sederhana (disimpan hanya utk referensi/log)
         avg = (
             lag_1 +
             lag_2 +
             lag_3
         ) / 3
 
-        print(f"Rata-rata Lag : {avg}")
-
-        hasil = (
-            pred * 0.7
-        ) + (
-            avg * 0.3
+        # Weighted average -> data terbaru (lag_1) diberi bobot
+        # lebih besar drpd data yang lebih lama (lag_3).
+        # Ini penting karena RF cenderung "menarik" hasil ke
+        # rata-rata training, sehingga tren naik/turun terbaru
+        # perlu ditegaskan lagi di sini.
+        weighted_avg = (
+            (lag_1 * 0.5) +
+            (lag_2 * 0.3) +
+            (lag_3 * 0.2)
         )
 
-        print(f"Hasil Setelah Stabilisasi : {hasil}")
+        print(f"Rata-rata Lag (avg)      : {avg}")
+        print(f"Weighted Avg Lag         : {weighted_avg}")
+
+        hasil = (
+            pred * 0.6
+        ) + (
+            weighted_avg * 0.4
+        )
+
+        print(f"Hasil Setelah Blend      : {hasil}")
 
         # ==============================
-        # BOOST LIBUR
+        # FLOOR / CEILING BERDASARKAN TREN
         # ==============================
-        # Penyesuaian menjelang hari libur
+        # ATURAN BISNIS (wajib, sesuai arahan dosen pembimbing):
+        # 1. Prediksi TIDAK BOLEH lebih rendah dari lag manapun
+        #    (lag_1, lag_2, lag_3) -- tidak masuk akal kalau stok
+        #    yang direkomendasikan untuk hari H lebih kecil dari
+        #    penjualan aktual 1-3 hari sebelumnya.
+        # 2. Kalau tren naik (penjualan makin besar), prediksi harus
+        #    ikut naik melebihi lag terakhir, bukan cuma menyamai.
+        #    Dipakai extrapolasi sederhana dari rata-rata kenaikan
+        #    per hari (growth), diredam 50% supaya tidak terlalu
+        #    agresif/overstock.
+        # 3. Kalau tren turun, prediksi boleh ikut turun, tapi tetap
+        #    tidak boleh di bawah lag_1 dikurangi penurunan wajar --
+        #    dibatasi supaya tidak jatuh drastis di luar kewajaran.
 
-        if holiday_score >= 14:
-            hasil *= 1.40
+        lag_max = max(lag_1, lag_2, lag_3)
+        lag_min = min(lag_1, lag_2, lag_3)
 
-        elif holiday_score >= 10:
-            hasil *= 1.30
+        # rata-rata kenaikan/penurunan per hari, dari lag_3 -> lag_1
+        growth_per_day = (lag_1 - lag_3) / 2
 
-        elif holiday_score >= 6:
-            hasil *= 1.20
+        tren_naik = lag_1 >= lag_2 >= lag_3 and lag_1 > lag_3
+        tren_turun = lag_1 <= lag_2 <= lag_3 and lag_1 < lag_3
 
-        elif holiday_score >= 3:
-            hasil *= 1.10
+        # ATURAN 1: floor mutlak -> tidak boleh di bawah lag tertinggi
+        # (bukan cuma lag_1) supaya aman untuk semua kondisi.
+        floor_dasar = lag_max
+
+        if tren_naik:
+            # ATURAN 2: proyeksi naik, minimal lag_1 + separuh growth
+            floor_akhir = max(
+                floor_dasar,
+                lag_1 + max(growth_per_day, 0) * 0.5
+            )
+            hasil = max(hasil, floor_akhir)
+            print(f"Tren naik -> floor ke {floor_akhir} (growth/hari: {growth_per_day})")
+
+        elif tren_turun:
+            # ATURAN 3: boleh turun, tapi dibatasi tidak lebih rendah
+            # dari lag_min dikurangi setengah growth (growth negatif)
+            floor_akhir = max(
+                lag_min + growth_per_day * 0.5,
+                0
+            )
+            hasil = max(hasil, floor_akhir)
+            print(f"Tren turun -> floor dilonggarkan ke {floor_akhir}")
+
+        else:
+            # Tren campur/stabil -> tetap tidak boleh di bawah lag
+            # tertinggi, untuk jaga-jaga (safety stock).
+            hasil = max(hasil, floor_dasar)
+            print(f"Tren stabil/campur -> floor ke {floor_dasar}")
+
+        print(f"Hasil Setelah Trend Guard: {hasil}")
+
+        # ==============================
+        # CATATAN: BOOST HARI LIBUR
+        # ==============================
+        # Boost hari libur SENGAJA TIDAK dihitung di sini lagi.
+        # Kalender custom (holidayList) di Laravel sudah lebih
+        # lengkap & akurat untuk 2026 dibanding library `holidays`
+        # otomatis, jadi boost cukup dihitung SEKALI saja di
+        # DashboardController::prediksi(), bukan di dua tempat
+        # (dulu terjadi double-boost: di sini x1.1-1.4, lalu di
+        # Laravel di-boost lagi).
+        # holiday_score & is_holiday tetap dikirim balik di bawah
+        # untuk keperluan fitur model / debugging, tapi TIDAK lagi
+        # dipakai untuk mengalikan `hasil`.
+
         # ==============================
         # MINIMAL NILAI
         # ==============================
@@ -615,20 +686,22 @@ def predict():
             # HASIL ASLI RANDOM FOREST
             'prediksi_random_forest': round(pred, 2),
 
-            # HASIL SETELAH STABILISASI
+            # HASIL SETELAH BLEND (sebelum trend guard)
             'prediksi_setelah_stabilisasi': round(
-                (pred * 0.7) + (avg * 0.3),
+                (pred * 0.6) + (weighted_avg * 0.4),
                 2
             ),
 
-            # BESAR BOOST YANG DIBERIKAN
-            'boost_persen': (
-                "40%" if holiday_score >= 14 else
-                "30%" if holiday_score >= 10 else
-                "20%" if holiday_score >= 6 else
-                "10%" if holiday_score >= 3 else
-                "0%"
+            # APAKAH TREND GUARD AKTIF
+            'trend_guard': (
+                "naik" if tren_naik else
+                "turun" if tren_turun else
+                "stabil"
             ),
+
+            # Catatan: boost hari libur TIDAK lagi dihitung di sini,
+            # lihat DashboardController::prediksi() di Laravel.
+            'boost_persen': "0% (dihitung di Laravel)",
 
             'kategori': kategori,
 
